@@ -1,8 +1,4 @@
----
-title: "Caterpillar Tube Pricing"
-output: pdf_document
----
-
+# Caterpillar Tube Pricing
  
 Walking past a construction site, Caterpillar's signature bright yellow machinery is one of the first things you'll notice. Caterpillar sells an enormous variety of larger-than-life construction and mining equipment to companies across the globe. Each machine relies on a complex set of tubes (yes, tubes!) to keep the forklift lifting, the loader loading, and the bulldozer from dozing off. 
 
