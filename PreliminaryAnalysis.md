@@ -19,6 +19,7 @@ Since the entire dataset is approximatively 6.8 Mb, we will use
 
 * MySQL (with MySQL WorkBench) to store the data
 * R (with RStudio Version 0.99.465) to produce the analysis code
+* Python (version 3.4)
 * Dia to build the relational schema of the database and other schemas if needed
 
 The configuration for MySQL is the following:
@@ -39,9 +40,10 @@ For the database:
 
 * Database: AaaaaBbbbb
 * Tables: AaaaaBbbbb
+* Cross reference tables: Aaaaa_Bbbbb
 * Fields: aaaaaBbbbb
 
-For R language:
+For the R language:
 
 * Functions: aaaaBbbbb
 * Local variables: aaaa_bbbb
@@ -50,4 +52,4 @@ For R language:
 * Dataset: Aaaaa_Bbbbb
 
 ## Database Structure
-In this section, we will show the relational schema of the database.
+In this section, we will show the [relational schema of the database](https://github.com/glapointe7/CaterpillarTubePricing/blob/master/Caterpillar.dia).

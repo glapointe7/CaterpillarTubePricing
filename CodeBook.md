@@ -15,10 +15,23 @@ Currently, Caterpillar relies on a variety of suppliers to manufacture these tub
 ### Dataset
 The dataset is comprised of a large number of relational tables that describe the physical properties of tube assemblies. You are challenged to combine the characteristics of each tube assembly with supplier pricing dynamics in order to forecast a quote price for each tube. The quote price is labeled as cost in the data.
 
+### Notations
+In this dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the boolean value `true`. The notation `N` means `NO` and can be treated as the boolean value `false`. Finally, the value `NONE` means that there is no such component on a certain tube assembly.
+
+There are also many identifiant codes used in fields [Table]_id. Here are the list:
+
+| Code           | Full name |
+| -------------- | --------- |
+| A              | Type End Form |
+| B              | Connection Type |
+| C              | Component |
+| CP             | Component Type |
+| EF             | Tube End Form |
+| SP             | Specs (for material) |
+| TA             | Tube Assembly |
+
+
 ### File descriptions
-Add a range (upper and lower bounds) that a variable can reach
-Identify missing values and try to get real data for them
-What does 0 or N/A or blank means for each variable
 
 
 #### train_set.csv and test_set.csv
@@ -28,7 +41,7 @@ This file contains information on price quotes from our suppliers. Prices can be
 | Variable           | Description |
 | ------------------ | ----------- |
 | id                 | Auto-increment number starting to 1. |
-| tube_assembly_id   | The tube assembly ID (TA-xxxxx) |
+| tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
 | supplier           | The supplier who quotes the price of a tube assembly. |
 | quote_date         | Date when the supplier quotes the price on a tube assembly. |
 | annual_usage       | An estimate of how many tube assemblies will be purchased in a given year. |
@@ -46,6 +59,24 @@ Source of images: [https://www.kaggle.com/c/caterpillar-tube-pricing/data](https
 <img src="Images/tube1.png" alt="Drawing" style="width: 500px;"/> <br /><br />
 <img src="Images/tube2.png" alt="Drawing" style="width: 500px;"/> <br /><br />
 
+| Variable           | Description |
+| ------------------ | ----------- |
+| tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
+| material_id        | The material used, represented by his ID, for the tube assembly. |
+| diameter           | Typical diameter of tubes used in this tube assembly. |
+| wall               | Typical wall thickness of tubes used in this tube assembly. |
+| length             | Total length of this tube assembly. |
+| num_bends          | Total number of bends in this tube assembly. |
+| bend_radius        | Typical bend radius for this tube assembly. |
+| end_a_1x           | (Y) If the end straight length is less than 1 times the tube diameter. (N) otherwise |
+| end_a_2x           | (Y) If the end straight length is less than 2 times the tube diameter. (N) otherwise |
+| end_x_1x           | (Y) If the end length is less than 1 times the tube diameter. (N) otherwise |
+| end_x_2x           | (Y) If the end length is less than 2 times the tube diameter. (N) otherwise |
+| end_a              | ID of end form tube which typically has some form of end connection allowing the tube assembly to attach to other features. |
+| end_x              | ID of end form tube which typically has some form of end connection allowing the tube assembly to attach to other features. |
+| num_boss           | Total number of bosses attached to a tube in this tube assembly. |
+| num_bracket        | Total number of brackets attached to a tube in this tube assembly. |
+| other              | Total number of other components attached to a tube in this tube assembly. |
 
 
 #### bill_of_materials.csv
