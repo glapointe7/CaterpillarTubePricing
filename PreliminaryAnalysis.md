@@ -14,42 +14,62 @@ The data are certified valid and are found [here](https://www.kaggle.com/c/cater
 
 
 ## Technologies
+Here is the list of languages and softwares that will be used for this project. 
 
-Since the entire dataset is approximatively 6.8 Mb, we will use
+#### Languages
 
-* MySQL (with MySQL WorkBench) to store the data
-* R (with RStudio Version 0.99.465) to produce the analysis code
-* Python (version 3.4)
+* MySQL 5.5.44 to store the data since the entire dataset is approximatively 6.8 Mb
+* R to produce the analysis code
+* Python 3.4
+
+#### Sofwares
+
+* MySQL WorkBench version 6.0.8.11354
+* RStudio Version 0.99.465
+* IDLE Version 3.4.0
 * Dia to build the relational schema of the database and other schemas if needed
 
+#### Configuration details
 The configuration for MySQL is the following:
+TBD
 
-The kind of computer used for this project:
+Packages used for this project are:
+TBD
+
+#### Type of computer
 
 * Processor: Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz
 * Cores: 4
 * RAM: 8 GB
 * Company Name: HP (Hewlett-Packard)
 
+#### Operating System
 The Operating System used is Linux Mint 17.1
 
+#### Project Server
 The project files will be stored in github under the folder [CaterpillarTubePricing](https://github.com/glapointe7/CaterpillarTubePricing)
+
 
 ## Naming Convension
 For the database:
 
-* Database: AaaaaBbbbb
-* Tables: AaaaaBbbbb
+* Database: Upper camel case (AaaaaBbbbb)
+* Tables: Upper camel case (AaaaaBbbbb)
 * Cross reference tables: Aaaaa_Bbbbb
-* Fields: aaaaaBbbbb
+* Fields: Lower camel case (aaaaaBbbbb)
 
 For the R language:
 
 * Functions: aaaaBbbbb
+* Function parameters: aaaa_bbbb
 * Local variables: aaaa_bbbb
 * Constants: AAAA_BBBB
 * Lists: AaaaaBbbbb
 * Dataset: Aaaaa_Bbbbb
+
+For the Python language:
+
+TBD
 
 ## Database Structure
 In this section, we will show the [relational schema of the database](https://github.com/glapointe7/CaterpillarTubePricing/blob/master/Caterpillar.dia).
