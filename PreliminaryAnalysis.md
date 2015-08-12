@@ -28,6 +28,7 @@ Here is the list of languages and softwares that will be used for this project.
 * RStudio Version 0.99.465
 * IDLE Version 3.4.0
 * Dia to build the relational schema of the database and other schemas if needed
+* [XMind 6](www.xmind.net/download/)
 
 #### Configuration details
 The configuration for MySQL is the following:

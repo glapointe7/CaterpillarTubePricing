@@ -14,6 +14,8 @@ The dataset is comprised of a large number of relational tables that describe th
 ### Notations
 In this dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the boolean value `true`. The notation `N` means `NO` and can be treated as the boolean value `false`. Finally, the value `NONE` means that there is no such component on a certain tube assembly.
 
+We can also see the code `OTHER` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list.
+
 There are also many identifiant codes used in fields [Table]_id. Here are the list:
 
 | Code           | Full name |
@@ -79,6 +81,13 @@ Source of images: [https://www.kaggle.com/c/caterpillar-tube-pricing/data](https
 
 This file contains the list of components, and their quantities, used on each tube assembly.
 
+| Variable           | Description |
+| ------------------ | ----------- |
+| tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
+| component_id_[x]   | The components used to build this tube assembly, where 1 <= x <= 8 an integer. |
+| quantity_[x]       | Quantity of components (identified by component_id_[x]) needed to build this tube assembly, where 1 <= x <= 8 an integer. |
+
+
 #### specs.csv
 
 This file contains the list of unique specifications for the tube assembly. These can refer to materials, processes, rust protection, etc.
@@ -93,7 +102,7 @@ This file contains the list of all of the components used. Component_type_id ref
 
 #### comp_[type].csv
 
-These files contain the information for each component.
+These files contain the information for each component. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv.
 
 #### type_[type].csv
 
