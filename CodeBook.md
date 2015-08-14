@@ -1,18 +1,14 @@
-# Code Book
+# Description of the Dataset
 
-### Model quoted prices for industrial tube assemblies
+### Dataset Purpose
+This dataset comes from [here](https://www.kaggle.com/c/caterpillar-tube-pricing/data) and has the purpose to serve of input to help to predict the price a supplier will quote for a given tube assembly. 
 
-Walking past a construction site, Caterpillar's signature bright yellow machinery is one of the first things you'll notice. Caterpillar sells an enormous variety of larger-than-life construction and mining equipment to companies across the globe. Each machine relies on a complex set of tubes (yes, tubes!) to keep the forklift lifting, the loader loading, and the bulldozer from dozing off. 
 
-Like snowflakes, it's difficult to find two tubes in Caterpillar's diverse catalogue of machinery that are exactly alike. Tubes can vary across a number of dimensions, including base materials, number of bends, bend radius, bolt patterns, and end types.
-
-Currently, Caterpillar relies on a variety of suppliers to manufacture these tube assemblies, each having their own unique pricing model. This competition provides detailed tube, component, and annual volume datasets, and challenges you to predict the price a supplier will quote for a given tube assembly.
-
-### Dataset
+### Dataset Summary
 The dataset is comprised of a large number of relational tables that describe the physical properties of tube assemblies. You are challenged to combine the characteristics of each tube assembly with supplier pricing dynamics in order to forecast a quote price for each tube. The quote price is labeled as cost in the data.
 
-### Notations
-In this dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the boolean value `true`. The notation `N` means `NO` and can be treated as the boolean value `false`. Finally, the value `NONE` means that there is no such component on a certain tube assembly.
+### Dataset Codes
+In this entire dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the value `1`. The notation `N` means `NO` and can be treated as the value `0`. Finally, the value `NONE` means that there is no such component on a certain tube assembly. We will treat `NA` and `NONE` as `NA` values.
 
 We can also see the code `OTHER` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list.
 
@@ -29,12 +25,37 @@ There are also many identifiant codes used in fields [Table]_id. Here are the li
 | TA             | Tube Assembly |
 
 
-### File descriptions
+### Dataset File Descriptions
+There are a total of 21 CSV files in this dataset. Here is the list of files with a short description for each one.
+
+| FileName              | Variables Number | Sample size | Description |
+| --------------------- | ----------------:| -----------:| ----------- |
+| train_set.csv         | 8                | 30213       | Contains information on price quotes from our suppliers. |
+| test_set.csv          | 8                | 30235       | Contains information on quntities. |
+| tube.csv              | 16               | 21198       | Contains information on tube assemblies. |
+| bill_of_materials.csv | 17               | 21198       | Contains the list of components, and their quantities, used on each tube assembly. |
+| specs.csv             | 11               | 21198       | Contains the list of unique specifications for the tube assembly. |
+| tube_end_form.csv     | 2                | 27          | Contains end types that are physically formed utilizing only the wall of the tube. |
+| components.csv        | 3                | 2048        | Contains the list of all of the components used. |
+| comp_adaptor.csv      | 20               | 25          | Contains the list of all of the components that are of type Adaptor used. |
+| comp_boss.csv         | 15               | 147         | Contains the list of all of the components that are of type Boss used. |
+| comp_elbow.csv        | 16               | 178         | Contains the list of all of the components that are of type Elbow used. |
+| comp_float.csv        | 7                | 16          | Contains the list of all of the components that are of type Float used. |
+| comp_hlf.csv          | 9                | 6           | Contains the list of all of the components that are of type HLF used. |
+| comp_nut.csv          | 11               | 65          | Contains the list of all of the components that are of type Nut used. |
+| comp_sleeve.csv       | 10               | 50          | Contains the list of all of the components that are of type Sleeve used. |
+| comp_straight.csv     | 12               | 361         | Contains the list of all of the components that are of type Straight used. |
+| comp_tee.csv          | 14               | 4           | Contains the list of all of the components that are of type Tee used. |
+| comp_threaded.csv     | 32               | 194         | Contains the list of all of the components that are of type Threaded used. |
+| comp_other.csv        | 3                | 1001        | Contains the list of all of the components that are of type Other used. |
+| type_component.csv    | 2                | 29          | Contains the names for each component type. |
+| type_connection.csv   | 2                | 29          | Contains the names for each connection type. |
+| type_end_form.csv     | 2                | 8           | Contains the names for each end form type. |
 
 
-#### train_set.csv and test_set.csv
+#### train_set.csv (and test_set.csv)
 
-This file contains information on price quotes from our suppliers. Prices can be quoted in 2 ways: bracket and non-bracket pricing. Bracket pricing has multiple levels of purchase based on quantity (in other words, the cost is given assuming a purchase of quantity tubes). Non-bracket pricing has a minimum order amount (min_order) for which the price would apply. Each quote is issued with an annual_usage, an estimate of how many tube assemblies will be purchased in a given year.
+These files contain information on price quotes from our suppliers. Prices can be quoted in 2 ways: bracket and non-bracket pricing. Bracket pricing has multiple levels of purchase based on quantity (in other words, the cost is given assuming a purchase of quantity tubes). Non-bracket pricing has a minimum order amount (min_order) for which the price would apply. Each quote is issued with an annual_usage, an estimate of how many tube assemblies will be purchased in a given year.
 
 | Variable           | Description |
 | ------------------ | ----------- |
@@ -92,19 +113,43 @@ This file contains the list of components, and their quantities, used on each tu
 
 This file contains the list of unique specifications for the tube assembly. These can refer to materials, processes, rust protection, etc.
 
+| Variable           | Description |
+| ------------------ | ----------- |
+| tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
+| spec[x]            | The specifications used to build this tube assembly, where 1 <= x <= 10 an integer. Note that a tube assembly may not needs any specifications. In that case, spec1 to spec10 have the value `NA`. |
+
+
 #### tube_end_form.csv
 
 Some end types are physically formed utilizing only the wall of the tube. These are listed here.
+
+| Variable           | Description |
+| ------------------ | ----------- |
+| end_form_id        | The end form tube ID (EF-xxx). Note that the ID `9999` means that this end form is other than the ones contain in the list. |
+| forming            | Boolean value (Yes / No) indicating if the end type is physically formed utilizing only the wall of the tube or not. |
+
 
 #### components.csv
 
 This file contains the list of all of the components used. Component_type_id refers to the category that each component falls under.
 
+| Variable           | Description |
+| ------------------ | ----------- |
+| component_id       | The component ID (C-xxxx). Note that the ID `9999` means that this component is other than the ones contain in the list. |
+| name               | The name of the component in uppercase. |
+| component_type_id  | Refers to the component type that each component falls under. |
+
+
 #### comp_[type].csv
 
-These files contain the information for each component. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv.
+These files contain the information classified type of components. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
+
 
 #### type_[type].csv
 
-These files contain the names for each feature.
+These files contain the names for each feature (type). The types are: Component Type, Connection and End Form.
 
+| Variable           | Description |
+| ------------------ | ----------- |
+| type\_[type]\_id     | The type ID. Note that the ID `9999` means that this type is other than the ones contain in the list. |
+| name               | The name of the type. |

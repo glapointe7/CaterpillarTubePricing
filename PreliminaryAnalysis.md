@@ -1,7 +1,4 @@
----
-title: "Preliminary Analysis"
-output: html_document
----
+# Technical & Functional Requirements
 
 ## Project
 Company: Caterpillar
@@ -18,8 +15,8 @@ Here is the list of languages and softwares that will be used for this project.
 
 #### Languages
 
-* MySQL 5.5.44 to store the data since the entire dataset is approximatively 6.8 Mb
-* R to produce the analysis code
+* MySQL 5.5.44 to store the data since the entire dataset is small (approximatively 6.8 Mb)
+* R to produce the analysis code and graphics
 * Python 3.4
 
 #### Sofwares
@@ -32,20 +29,27 @@ Here is the list of languages and softwares that will be used for this project.
 
 #### Configuration details
 The configuration for MySQL is the following:
-TBD
 
-Packages used for this project are:
-TBD
+*TBD*
 
-#### Type of computer
+R Packages used for this project are:
+
+* ggplot2
+* dplyr
+
+*TBD*
+
+#### Type of computer used
 
 * Processor: Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz
 * Cores: 4
 * RAM: 8 GB
 * Company Name: HP (Hewlett-Packard)
 
-#### Operating System
-The Operating System used is Linux Mint 17.1
+#### Operating Systems used
+
+* Linux Mint 17.1
+* Microsoft Windows 7, 8, 8.1 and 10
 
 #### Project Server
 The project files will be stored in github under the folder [CaterpillarTubePricing](https://github.com/glapointe7/CaterpillarTubePricing)
@@ -58,8 +62,10 @@ For the database:
 * Tables: Upper camel case (AaaaaBbbbb)
 * Cross reference tables: Aaaaa_Bbbbb
 * Fields: Lower camel case (aaaaaBbbbb)
+* Primary keys: pkTableName
+* Foreign keys: fkTableName
 
-For the R language:
+For the R language we will use tabulation of 4 spaces as indentation:
 
 * Functions: aaaaBbbbb
 * Function parameters: aaaa_bbbb
@@ -68,9 +74,21 @@ For the R language:
 * Lists: AaaaaBbbbb
 * Dataset: Aaaaa_Bbbbb
 
-For the Python language:
+For the Python language we will use tabulation of 4 spaces as indentation:
 
-TBD
+* Functions: aaaaBbbbb
+* Function parameters: aaaa_bbbb
+* Local variables: aaaa_bbbb
+* Constants: AAAA_BBBB
+* Arrays: Aaaaa_Bbbbb
+* Classes: AaaaaBbbbb
 
 ## Database Structure
-In this section, we will show the [relational schema of the database](https://github.com/glapointe7/CaterpillarTubePricing/blob/master/Caterpillar.dia).
+In this section, we show the [relational schema of the database](https://github.com/glapointe7/CaterpillarTubePricing/blob/master/Caterpillar.dia).
+
+## Functional Requirements
+Here is the list of functions and inputs / outputs with descriptions for each.
+
+* F-01: Create the database with the relational scheme containing data from the dataset given as input.
+* F-02: Write a Code Book describing the dataset and its files and variables used from the dataset received as input.
+* F-03: *TBD*
