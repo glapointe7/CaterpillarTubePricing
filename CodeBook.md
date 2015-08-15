@@ -144,6 +144,8 @@ This file contains the list of all of the components used. Component_type_id ref
 
 These files contain the information classified type of components. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
 
+Note that each `component_id` is unique. The list of all components used in files `comp_[type].csv` corresponds exactly to the list of components in the file `components.csv`.
+
 
 #### type_[type].csv
 
