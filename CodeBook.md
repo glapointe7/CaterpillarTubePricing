@@ -10,7 +10,7 @@ The dataset is comprised of a large number of relational tables that describe th
 ### Dataset Codes
 In this entire dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the value `1`. The notation `N` means `NO` and can be treated as the value `0`. Finally, the value `NONE` means that there is no such component on a certain tube assembly. We will treat `NA` and `NONE` as `NA` values.
 
-We can also see the code `OTHER` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list.
+We can also see the code `Other` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list.
 
 There are also many identifiant codes used in fields [Table]_id. Here are the list:
 

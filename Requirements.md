@@ -16,27 +16,36 @@ In this section, we write the list of languages and softwares that will be used 
 #### Languages
 
 * MySQL 5.5.44 to store the data since the entire dataset is small (approximatively 6.8 Mb)
-* R to produce the analysis code and graphics
-* Python 3.4
+* R version 3.2.1 (2015-06-18) to produce the analysis code and graphics
 
 #### Sofwares
 
 * MySQL WorkBench version 6.0.8.11354
 * RStudio Version 0.99.465
-* IDLE Version 3.4.0
 * Dia to build the relational schema of the database and other schemas if needed
 * [XMind 6](www.xmind.net/download/)
 
 #### Configuration details
 The configuration details for MySQL will be set considering we will create tables once and we will insert a lot of data. Once it will be done, all queries will be selections of data. Since the data integrity is very important, MyISAM engine cannot be used. Therefore, we will use the InnoDB engine. 
 
+Connection details:
+
+* Connection method = TCP/IP
+* Hostname = localhost
+* Port = 3306
+* UserName = root
+* Password = glapointe7
+
 R Packages used for this project are:
 
 * ggplot2
 * dplyr
 * RMySQL
+* R6
+* sqldf
 
-*TBD*
+If they are not installed, then use `install.packages("PackageName")` to get the package PackageName installed.
+
 
 #### Type of computer used
 
@@ -60,7 +69,7 @@ Once a functional requirement is done (means it is tested and considered as vali
 
 We will create a branch named `Development` where we will put reproductible analysis and all documents and codes used for the projects. The `master` branch must contain the documents representing the functional requirements (see last section of this document) and other important documents like the license for example.
 
-## Naming Convension
+## Naming Convention
 For the database:
 
 * Database: Upper camel case (AaaaaBbbbb)
@@ -70,23 +79,30 @@ For the database:
 * Primary keys: pkTableName
 * Foreign keys: fkTableName
 
+The date format used will be `yyyy-mm-dd`. This format is used in the dataset (e.g. train\_set.csv, column 'quote\_date').
+
 For the R language we will use tabulation of 4 spaces as indentation:
 
-* Functions: aaaaBbbbb
-* Function parameters: aaaa_bbbb
-* Local variables: aaaa_bbbb
-* Constants: AAAA_BBBB
-* Lists: AaaaaBbbbb
-* Dataset: Aaaaa_Bbbbb
-
-For the Python language we will use tabulation of 4 spaces as indentation:
-
-* Functions: aaaaBbbbb
-* Function parameters: aaaa_bbbb
-* Local variables: aaaa_bbbb
-* Constants: AAAA_BBBB
-* Arrays: Aaaaa_Bbbbb
 * Classes: AaaaaBbbbb
+* Functions: aaaaBbbbb
+* Function parameters: aaaa_bbbb
+* Local variables: aaaa_bbbb
+* Constants: AAAA_BBBB
+* Arrays (any type): Aaaaa_Bbbbb
+
+Any function or instructions that require braces should have open and closed braces on separate lines like this: 
+```{r}
+theFunction <- function(parameters_abc)  
+{  
+    if(parameters_abc = 5)
+    {
+        for(i in 1:20)
+        {
+            ...
+        }
+    }
+}
+```
 
 The tag created with GIT must be in this format: V[x].[y]\_[date of tag creation], where `x` is the major version starting at `0`, `y` is the minor version starting at `1` (can be related with a functional requirement ID) and date of tag creation is in the format Mmmjjaaaa. Here is an example of a valid tag: V0.1\_Aug142015.
 
