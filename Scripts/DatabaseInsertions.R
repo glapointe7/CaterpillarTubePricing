@@ -35,20 +35,22 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         database = NULL,
         
         ## Build a string of specs used by a tube assembly.
-        addSpecsUsedInTubeAssembly = function(tube_id)
+        addSpecsUsedInTubeAssembly = function(Tube_Specs_Row)
         {
-            pk_tube <- paste("TA-", formatC(tube_id, width = 5, format = "d", flag = "0"), sep = "")
-            query <- paste("SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file WHERE tube_assembly_id = '", pk_tube, "'", sep = "")
-            data <- read.csv.sql("Dataset/specs.csv", sql = query)
+            ## Open the file once and store data in a dataframe should be faster by using data[i] which is the ith tube assembly.
+            #pk_tube <- paste("TA-", formatC(tube_id, width = 5, format = "d", flag = "0"), sep = "")
+            #query <- paste("SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file WHERE tube_assembly_id = '", pk_tube, "'", sep = "")
+            #data <- read.csv.sql("Dataset/specs.csv", sql = query)
             
+            ## There are a maximum of 10 specs and a minimum of 0 spec for each tube assembly.
             specs <- ""
             i <- 1
-            spec_value <- data[paste("spec", i, sep = "")]
-            while(spec_value != "NA")
+            spec_value <- Tube_Specs_Row[1, paste("spec", i, sep = "")]
+            while(spec_value != "NA" && i <= 10)
             {
-                specs <- paste(specs, ",", data[paste("spec", i, sep = "")])
+                specs <- paste(specs, Tube_Specs_Row[1, paste("spec", i, sep = "")], sep = ",")
                 i <- i + 1
-                spec_value <- data[paste("spec", i, sep = "")]
+                spec_value <- Tube_Specs_Row[1, paste("spec", i, sep = "")]
             }
             
             specs
@@ -70,7 +72,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from files Dataset/type_[type].csv to table ComponentType, ConnectionType and EndFormType in the Caterpillar database.
         addAllTypesData = function()
         {
-            Types_List <- list(components = "ComponentType", connection = "ConnectionType", end_form = "EndFormType")
+            Types_List <- list(component = "ComponentType", connection = "ConnectionType", end_form = "EndFormType")
             for(type in names(Types_List))
             {
                 data <- read.csv.sql(paste("Dataset/type_", type, ".csv", sep = ""), sql = "SELECT name FROM file")
@@ -84,7 +86,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                 }
                 
                 ## Insert the component type 'OTHER' since there's no such type defined, but it is used in every component file.
-                if(type == "components")
+                if(type == "component")
                 {
                     private$database$insertIntoTable(Types_List[[type]], c("NULL", "'Other'"))
                 }
@@ -102,7 +104,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                 Values_List <- c(
                     "NULL",
                     paste("'", data[i, "name"], "'", sep = ""), 
-                    ifelse(data[i, "component_type_id"] == "Other", pk_component_type, as.integer(substring(data[i, "component_type_id"], 4)))
+                    ifelse(data[i, "component_type_id"] == "OTHER", pk_component_type, as.integer(substring(data[i, "component_type_id"], 4)))
                 )
                 private$database$insertIntoTable("Component", Values_List)
             }
@@ -125,17 +127,23 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/tube.csv to the table TubeAssembly in the Caterpillar database.
         addTubeAssemblyData = function()
         {
-            data <- read.csv.sql("Dataset/tube.csv", sql = "SELECT material_id, diameter, wall, length, num_bends, bend_radius, end_a_1x, end_a_2x, end_x_1x, end_x_2x, end_a, end_x, num_boss, num_bracket, other FROM file")
+            data <- read.csv.sql("Dataset/tube.csv", sql = "SELECT material_id, diameter, wall, length, num_bends, bend_radius, end_a_1x, end_a_2x, 
+                                                                   end_x_1x, end_x_2x, end_a, end_x, num_boss, num_bracket, other FROM file")
+            
+            query <- "SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file"
+            data_specs <- read.csv.sql("Dataset/specs.csv", sql = query)
+            
             for(i in 1:nrow(data))
             {
+                specs <- private$addSpecsUsedInTubeAssembly(data_specs[i, ])
                 Values_List <- c(
                     "NULL",
                     ifelse(data[i, "material_id"] == "NA", "NULL", paste("'", data[i, "material_id"], "'", sep = "")),
-                    data[i, "diameter"],
-                    data[i, "wall"],
-                    data[i, "length"],
-                    data[i, "num_bends"],
-                    data[i, "bend_radius"],
+                    ifelse(data[i, "diameter"] == "NA", "NULL", data[i, "diameter"]),
+                    ifelse(data[i, "wall"] == "NA", "NULL", data[i, "wall"]),
+                    ifelse(data[i, "length"] == "NA", "NULL", data[i, "length"]),
+                    ifelse(data[i, "num_bends"] == "NA", "NULL", data[i, "num_bends"]),
+                    ifelse(data[i, "bend_radius"] == "NA", "NULL", data[i, "bend_radius"]),
                     transformToBit(data[i, "end_a_1x"]),
                     transformToBit(data[i, "end_a_2x"]),
                     transformToBit(data[i, "end_x_1x"]),
@@ -145,7 +153,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                     data[i, "num_boss"],
                     data[i, "num_bracket"],
                     data[i, "other"],
-                    addSpecsUsedInTubeAssembly(i)
+                    ifelse(specs == "", "NULL", paste("'", specs, "'", sep = ""))
                 )
                 private$database$insertIntoTable("TubeAssembly", Values_List)
             }
@@ -154,7 +162,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/train_set.csv to the table TubeAssemblyPricing in the Caterpillar database.
         addTubeAssemblyPricingData = function()
         {
-            data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, bracket_pricing, quantity, cost FROM file")
+            data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
+                                                                        bracket_pricing, quantity, cost FROM file")
             for(i in 1:nrow(data))
             {
                 Values_List <- c(
@@ -175,7 +184,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/bill_of_materials.csv to the table TubeAssembly_Component in the Caterpillar database.
         addBillOfMaterialsData = function()
         {
-            query <- "SELECT tube_assembly_id, component_id_1, quantity_1, component_id_2, quantity_2, component_id_3, quantity_3, component_id_4, quantity_4, component_id_5, quantity_5, component_id_6, quantity_6, component_id_7, quantity_7, component_id_8, quantity_8 FROM file"
+            query <- "SELECT tube_assembly_id, component_id_1, quantity_1, component_id_2, quantity_2, component_id_3, quantity_3, component_id_4, quantity_4, 
+                             component_id_5, quantity_5, component_id_6, quantity_6, component_id_7, quantity_7, component_id_8, quantity_8 FROM file"
             data <- read.csv.sql("Dataset/bill_of_materials.csv", sql = query)
             for(i in 1:nrow(data))
             {
@@ -229,7 +239,10 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_adaptor.csv to the table ComponentAdaptor in the Caterpillar database.
         addAdaptorComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_adaptor.csv", sql = "SELECT component_id, component_type_id, adaptor_angle, overall_length, end_form_id_1, connection_type_id_1, length_1, thread_size_1, thread_pitch_1, nominal_size_1, end_form_id_2, connection_type_id_2, length_2, thread_size_2, thread_pitch_2, nominal_size_2, hex_size, unique_feature, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_adaptor.csv", sql = "SELECT component_id, component_type_id, adaptor_angle, overall_length, 
+                                                             end_form_id_1, connection_type_id_1, length_1, thread_size_1, thread_pitch_1, nominal_size_1, 
+                                                             end_form_id_2, connection_type_id_2, length_2, thread_size_2, thread_pitch_2, nominal_size_2, 
+                                                             hex_size, unique_feature, orientation, weight FROM file")
             pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
             
@@ -269,7 +282,9 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_boss.csv to the table ComponentBoss in the Caterpillar database.
         addBossComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_boss.csv", sql = "SELECT component_id, component_type_id, type, connection_type_id, outside_shape, base_type, height_over_tube, bolt_pattern_long, bolt_pattern_wide, groove, base_diameter, shoulder_diameter, unique_feature, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_boss.csv", sql = "SELECT component_id, component_type_id, type, connection_type_id, outside_shape, base_type, 
+                                                                        height_over_tube, bolt_pattern_long, bolt_pattern_wide, groove, base_diameter, 
+                                                                        shoulder_diameter, unique_feature, orientation, weight FROM file")
             pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
             for(i in 1:nrow(data))
@@ -301,7 +316,9 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_elbow.csv to the table ComponentElbow in the Caterpillar database.
         addElbowComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_elbow.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, overall_length, thickness, drop_length, elbow_angle, mj_class_code, mj_plug_class_code, plug_diameter, groove, unique_feature, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_elbow.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, 
+                                                                         overall_length, thickness, drop_length, elbow_angle, mj_class_code, mj_plug_class_code, 
+                                                                         plug_diameter, groove, unique_feature, orientation, weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -331,7 +348,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_float.csv to the table ComponentFloat in the Caterpillar database.
         addFloatComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_float.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, thickness, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_float.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, thickness, 
+                                                                         orientation, weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -354,7 +372,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_hfl.csv to the table ComponentHfl in the Caterpillar database.
         addHflComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_hfl.csv", sql = "SELECT component_id, component_type_id, hose_diameter, corresponding_shell, coupling_class, material, plating, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_hfl.csv", sql = "SELECT component_id, component_type_id, hose_diameter, corresponding_shell, coupling_class, 
+                                                                       material, plating, orientation, weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -377,7 +396,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_nut.csv to the table ComponentNut in the Caterpillar database.
         addNutComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_nut.csv", sql = "SELECT component_id, component_type_id, hex_nut_size, seat_angle, length, thread_size, thread_pitch, diameter, blind_hole, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_nut.csv", sql = "SELECT component_id, component_type_id, hex_nut_size, seat_angle, length, thread_size, 
+                                                                       thread_pitch, diameter, blind_hole, orientation, weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -402,7 +422,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_sleeve.csv to the table ComponentSleeve in the Caterpillar database.
         addSleeveComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_sleeve.csv", sql = "SELECT component_id, component_type_id, connection_type_id, length, intended_nut_thread, intended_nut_pitch, unique_feature, plating, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_sleeve.csv", sql = "SELECT component_id, component_type_id, connection_type_id, length, intended_nut_thread, 
+                                                                          intended_nut_pitch, unique_feature, plating, orientation, weight FROM file")
             pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
             for(i in 1:nrow(data))
@@ -427,7 +448,9 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_straight.csv to the table ComponentStraight in the Caterpillar database.
         addStraightComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_straight.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, head_diameter, overall_length, thickness, mj_class_code, groove, unique_feature, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_straight.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, head_diameter,
+                                                                            overall_length, thickness, mj_class_code, groove, unique_feature, orientation, 
+                                                                            weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -452,7 +475,9 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         ## Add all rows from the file Dataset/comp_tee.csv to the table ComponentTee in the Caterpillar database.
         addTeeComponentsData = function()
         {
-            data <- read.csv.sql("Dataset/comp_tee.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, overall_length, thickness, drop_length, mj_class_code, mj_plug_class_code, groove, unique_feature, orientation, weight FROM file")
+            data <- read.csv.sql("Dataset/comp_tee.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, 
+                                                                       overall_length, thickness, drop_length, mj_class_code, mj_plug_class_code, groove, 
+                                                                       unique_feature, orientation, weight FROM file")
             
             for(i in 1:nrow(data))
             {
@@ -475,10 +500,57 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                 )
                 private$database$insertIntoTable("ComponentTee", Values_List)
             }
+        },
+        
+        ## Add all rows from the file Dataset/comp_threaded.csv to the table ComponentThreaded in the Caterpillar database.
+        addThreadedComponentsData = function()
+        {
+            data <- read.csv.sql("Dataset/comp_threaded.csv", sql = "SELECT component_id, component_type_id, adaptor_angle, overall_length, hex_size, 
+                                 end_form_id_1, connection_type_id_1, length_1, thread_size_1, thread_pitch_1, nominal_size_1, 
+                                 end_form_id_2, connection_type_id_2, length_2, thread_size_2, thread_pitch_2, nominal_size_2, 
+                                 end_form_id_3, connection_type_id_3, length_3, thread_size_3, thread_pitch_3, nominal_size_3, 
+                                 end_form_id_4, connection_type_id_4, length_4, thread_size_4, thread_pitch_4, nominal_size_4, 
+                                 unique_feature, orientation, weight FROM file")
+            pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
+            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
+            
+            for(i in 1:nrow(data))
+            {
+                component_id <- as.integer(substring(data[i, "component_id"], 3))
+                Values_List <- c(
+                    "NULL",
+                    component_id,
+                    as.integer(substring(data[i, "component_type_id"], 4)),
+                    ifelse(data[i, "adaptor_angle"] == "NA", "NULL", data[i, "adaptor_angle"]),
+                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
+                    ifelse(data[i, "hex_size"] == "NA", "NULL", data[i, "hex_size"]),
+                    ifelse(data[i, "unique_feature"] == "NA", "NULL", transformToBit(data[i, "unique_feature"])),
+                    transformToBit(data[i, "orientation"]),
+                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
+                )
+                private$database$insertIntoTable("ComponentThreaded", Values_List)
+                
+                ## Insert the 4 thread connections in the table 'Component_Connection'.
+                fk_thread <- private$database$getPkValueFromName("ConnectionThread", "fkComponent", component_id)
+                for(j in 1:4)
+                {
+                    Thread_Values <- c(
+                        fk_thread,
+                        convertSpecialValues(data[i, paste("end_form_id_", j, sep = "")], pk_end_form_other),
+                        convertSpecialValues(data[i, paste("connection_type_id_", j, sep = "")], pk_connection_other),
+                        ifelse(data[i, paste("length_", j, sep = "")] == "NA", "NULL", data[i, paste("length_", j, sep = "")]),
+                        ifelse(data[i, paste("thread_size_", j, sep = "")] == "NA", "NULL", data[i, paste("thread_size_", j, sep = "")]),
+                        ifelse(data[i, paste("thread_pitch_", j, sep = "")] == "NA", "NULL", data[i, paste("thread_pitch_", j, sep = "")]),
+                        ifelse(data[i, paste("nominal_size_", j, sep = "")] == "NA", "NULL", data[i, paste("nominal_size_", j, sep = "")])
+                    )
+                    private$database$insertIntoTable("Component_Connection", Thread_Values)
+                }
+            }
         }
     )
 )
 
+## After grouping and cleaning data, we insert all data from the dataset in our Caterpillar database.
 addDatasetToDatabase <- function()
 {
     table <- CaterpillarTables$new()
@@ -486,17 +558,18 @@ addDatasetToDatabase <- function()
     table$addAllComponentsData()
     table$addEndTubeFormData()
     table$addTubeAssemblyData()
-    table$addTubeAssemblyPricingData()
-    table$addBillOfMaterialsData()
-    table$addOtherComponentsData()
-    table$addAdaptorComponentsData()
-    table$addBossComponentsData()
-    table$addElbowComponentsData()
-    table$addFloatComponentsData()
-    table$addHflComponentsData()
-    table$addNutComponentsData()
-    table$addSleeveComponentsData()
-    table$addStraightComponentsData()
-    table$addTeeComponentsData()
+#     table$addTubeAssemblyPricingData()
+#     table$addBillOfMaterialsData()
+#     table$addOtherComponentsData()
+#     table$addAdaptorComponentsData()
+#     table$addBossComponentsData()
+#     table$addElbowComponentsData()
+#     table$addFloatComponentsData()
+#     table$addHflComponentsData()
+#     table$addNutComponentsData()
+#     table$addSleeveComponentsData()
+#     table$addStraightComponentsData()
+#     table$addTeeComponentsData()
+#     table$addThreadedComponentsData()
     gc()
 }

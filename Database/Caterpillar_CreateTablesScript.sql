@@ -9,7 +9,7 @@ USE `Caterpillar` ;
 -- Table `Caterpillar`.`ComponentType`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentType` (
-  `pkComponentType` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkComponentType` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
   PRIMARY KEY (`pkComponentType`),
   UNIQUE INDEX `pkComponentType_UNIQUE` (`pkComponentType` ASC))
@@ -20,7 +20,7 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ConnectionType`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ConnectionType` (
-  `pkConnectionType` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkConnectionType` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
   UNIQUE INDEX `pkConnectionType_UNIQUE` (`pkConnectionType` ASC),
   PRIMARY KEY (`pkConnectionType`))
@@ -31,7 +31,7 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`TubeEndForm`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`TubeEndForm` (
-  `pkTubeEndForm` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkTubeEndForm` INT NOT NULL AUTO_INCREMENT,
   `forming` BIT NOT NULL,
   UNIQUE INDEX `pkTubeEndForm_UNIQUE` (`pkTubeEndForm` ASC),
   PRIMARY KEY (`pkTubeEndForm`))
@@ -42,9 +42,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`Component`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`Component` (
-  `pkComponent` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkComponent` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `fkComponentType` INT NOT NULL,
   UNIQUE INDEX `pkComponent_UNIQUE` (`pkComponent` ASC),
   PRIMARY KEY (`pkComponent`),
   INDEX `fkComponentType_idx` (`fkComponentType` ASC),
@@ -60,7 +60,7 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`EndFormType`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`EndFormType` (
-  `pkEndFormType` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkEndFormType` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
   PRIMARY KEY (`pkEndFormType`),
   UNIQUE INDEX `pkEndFormType_UNIQUE` (`pkEndFormType` ASC))
@@ -71,22 +71,22 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`TubeAssembly`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`TubeAssembly` (
-  `pkTubeAssembly` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `pkTubeAssembly` INT NOT NULL AUTO_INCREMENT,
   `materialID` VARCHAR(20) NULL,
   `diameter` DECIMAL(8,2) NULL,
   `wallThickness` DECIMAL(8,2) NULL,
-  `length` INT UNSIGNED NULL,
-  `numberOfBends` INT UNSIGNED NULL,
+  `length` INT NULL,
+  `numberOfBends` INT NULL,
   `bendRadius` DECIMAL(8,2) NULL,
   `endA1X` BIT NULL,
   `endA2X` BIT NULL,
   `endX1X` BIT NULL,
   `endX2X` BIT NULL,
-  `fkTubeEndFormA` INT UNSIGNED NULL,
-  `fkTubeEndFormX` INT UNSIGNED NULL,
-  `numberOfBoss` INT UNSIGNED NULL,
-  `numberOfBracket` INT UNSIGNED NULL,
-  `other` INT UNSIGNED NULL,
+  `fkTubeEndFormA` INT NULL,
+  `fkTubeEndFormX` INT NULL,
+  `numberOfBoss` INT NULL,
+  `numberOfBracket` INT NULL,
+  `other` INT NULL,
   `specs` VARCHAR(150) NULL,
   PRIMARY KEY (`pkTubeAssembly`),
   UNIQUE INDEX `pkTubeAssembly_UNIQUE` (`pkTubeAssembly` ASC),
@@ -109,9 +109,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`TubeAssembly_Component`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`TubeAssembly_Component` (
-  `fkTubeAssembly` INT UNSIGNED NOT NULL,
-  `fkComponent` INT UNSIGNED NULL,
-  `quantity` INT UNSIGNED NULL,
+  `fkTubeAssembly` INT NOT NULL,
+  `fkComponent` INT NULL,
+  `quantity` INT NULL,
   INDEX `fkTubeAssembly_idx` (`fkTubeAssembly` ASC),
   INDEX `fkComponent_idx` (`fkComponent` ASC),
   CONSTRAINT `fkTubeAssembly`
@@ -131,14 +131,14 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`TubeAssemblyPricing`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`TubeAssemblyPricing` (
-  `pkTubeAssemblyPricing` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkTubeAssembly` INT UNSIGNED NOT NULL,
+  `pkTubeAssemblyPricing` INT NOT NULL AUTO_INCREMENT,
+  `fkTubeAssembly` INT NOT NULL,
   `supplierID` VARCHAR(20) NOT NULL,
   `quoteDate` DATE NOT NULL,
-  `anualUsage` INT UNSIGNED NOT NULL,
-  `minOrderQuantity` INT UNSIGNED NOT NULL,
+  `anualUsage` INT NOT NULL,
+  `minOrderQuantity` INT NOT NULL,
   `bracketPricing` BIT NOT NULL,
-  `quantity` INT UNSIGNED NOT NULL,
+  `quantity` INT NOT NULL,
   `cost` DECIMAL(18,10) NOT NULL,
   PRIMARY KEY (`pkTubeAssemblyPricing`),
   UNIQUE INDEX `pkTubeAssemblyPricing_UNIQUE` (`pkTubeAssemblyPricing` ASC))
@@ -149,10 +149,10 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentSleeve`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentSleeve` (
-  `pkComponentSleeve` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
-  `fkConnectionType` INT UNSIGNED NULL,
+  `pkComponentSleeve` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
+  `fkConnectionType` INT NULL,
   `length` DECIMAL(8,2) NULL,
   `intendedNutThread` DECIMAL(8,3) NULL,
   `intendedNutPitch` DECIMAL(8,2) NULL,
@@ -187,9 +187,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentStraight`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentStraight` (
-  `pkComponentStraight` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentStraight` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `boltPatternLong` DECIMAL(8,2) NULL,
   `boltPatternWide` DECIMAL(8,2) NULL,
   `headDiameter` DECIMAL(8,2) NULL,
@@ -221,9 +221,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentTee`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentTee` (
-  `pkComponentTee` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentTee` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `boltPatternLong` DECIMAL(8,2) NULL,
   `boltPatternWide` DECIMAL(8,2) NULL,
   `extensionLength` DECIMAL(8,2) NULL,
@@ -257,9 +257,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentElbow`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentElbow` (
-  `pkComponentElbow` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentElbow` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `boltPatternLong` DECIMAL(8,2) NULL,
   `boltPatternWide` DECIMAL(8,2) NULL,
   `extensionLength` DECIMAL(8,2) NULL,
@@ -295,9 +295,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentFloat`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentFloat` (
-  `pkComponentFloat` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentFloat` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `boltPatternLong` DECIMAL(8,2) NULL,
   `boltPatternWide` DECIMAL(8,2) NULL,
   `thickness` DECIMAL(8,2) NULL,
@@ -324,11 +324,11 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentHfl`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentHfl` (
-  `pkComponentHfl` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentHfl` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `hoseDiameter` DECIMAL(8,2) NULL,
-  `correspondingShell` INT UNSIGNED NULL,
+  `correspondingShell` INT NULL,
   `couplingClass` VARCHAR(25) NULL,
   `material` VARCHAR(25) NULL,
   `plating` BIT NULL,
@@ -361,9 +361,9 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentNut`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentNut` (
-  `pkComponentNut` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentNut` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `hexNutSize` DECIMAL(8,2) NULL,
   `seatAngle` DECIMAL(8,2) NULL,
   `length` DECIMAL(8,2) NULL,
@@ -394,11 +394,11 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentBoss`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentBoss` (
-  `pkComponentBoss` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentBoss` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `type` VARCHAR(25) NULL,
-  `fkConnectionType` INT UNSIGNED NULL,
+  `fkConnectionType` INT NULL,
   `outsideShape` VARCHAR(25) NULL,
   `baseType` VARCHAR(50) NULL,
   `heightOverTube` DECIMAL(8,2) NULL,
@@ -437,19 +437,19 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentAdaptor`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentAdaptor` (
-  `pkComponentAdapter` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
-  `fkComponentType` INT UNSIGNED NOT NULL,
+  `pkComponentAdapter` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
   `adaptorAngle` DECIMAL(8,2) NULL,
   `overallLength` DECIMAL(8,2) NULL,
-  `fkEndFormType1` INT UNSIGNED NULL,
-  `fkConnectionType1` INT UNSIGNED NULL,
+  `fkEndFormType1` INT NULL,
+  `fkConnectionType1` INT NULL,
   `length1` DECIMAL(8,2) NULL,
   `threadSize1` DECIMAL(8,3) NULL,
   `threadPitch1` DECIMAL(8,2) NULL,
   `nominalSize1` DECIMAL(8,2) NULL,
-  `fkEndFormType2` INT UNSIGNED NULL,
-  `fkConnectionType2` INT UNSIGNED NULL,
+  `fkEndFormType2` INT NULL,
+  `fkConnectionType2` INT NULL,
   `length2` DECIMAL(8,2) NULL,
   `threadSize2` DECIMAL(8,3) NULL,
   `threadPitch2` DECIMAL(8,2) NULL,
@@ -503,8 +503,8 @@ ENGINE = InnoDB;
 -- Table `Caterpillar`.`ComponentOther`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentOther` (
-  `pkComponentOther` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `fkComponent` INT UNSIGNED NOT NULL,
+  `pkComponentOther` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
   `partName` VARCHAR(50) NOT NULL,
   `weight` DECIMAL(8,2) NULL,
   PRIMARY KEY (`pkComponentOther`),
@@ -513,6 +513,68 @@ CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentOther` (
   CONSTRAINT `fkComponentOther`
     FOREIGN KEY (`fkComponent`)
     REFERENCES `Caterpillar`.`Component` (`pkComponent`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Caterpillar`.`ComponentThreaded`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Caterpillar`.`ComponentThreaded` (
+  `pkComponentThreaded` INT NOT NULL AUTO_INCREMENT,
+  `fkComponent` INT NOT NULL,
+  `fkComponentType` INT NOT NULL,
+  `adaptorAngle` DECIMAL(8,2) NULL,
+  `overallLength` DECIMAL(8,2) NULL,
+  `hexSize` DECIMAL(8,2) NULL,
+  `uniqueFeature` BIT NULL,
+  `orientation` BIT NULL,
+  `weight` DECIMAL(8,3) NULL,
+  PRIMARY KEY (`pkComponentThreaded`),
+  UNIQUE INDEX `pkComponentThreaded_UNIQUE` (`pkComponentThreaded` ASC),
+  UNIQUE INDEX `fkComponent_UNIQUE` (`fkComponent` ASC),
+  INDEX `fkComponentTypeThreaded_idx` (`fkComponentType` ASC),
+  CONSTRAINT `fkComponentThreaded`
+    FOREIGN KEY (`fkComponent`)
+    REFERENCES `Caterpillar`.`Component` (`pkComponent`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fkComponentTypeThreaded`
+    FOREIGN KEY (`fkComponentType`)
+    REFERENCES `Caterpillar`.`ComponentType` (`pkComponentType`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Caterpillar`.`Component_Connection`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Caterpillar`.`Component_Connection` (
+  `fkComponentThread` INT NOT NULL,
+  `fkEndFormType` INT NULL,
+  `fkConnectionType` INT NULL,
+  `length` DECIMAL(8,2) NULL,
+  `threadSize` DECIMAL(8,2) NULL,
+  `threadPitch` DECIMAL(8,2) NULL,
+  `nominalSize` DECIMAL(8,2) NULL,
+  INDEX `fkComponentThreadConnection_idx` (`fkComponentThread` ASC),
+  INDEX `fkEndFormTypeConnection_idx` (`fkEndFormType` ASC),
+  INDEX `fkConnectionConnection_idx` (`fkConnectionType` ASC),
+  CONSTRAINT `fkComponentThreadConnection`
+    FOREIGN KEY (`fkComponentThread`)
+    REFERENCES `Caterpillar`.`ComponentThreaded` (`pkComponentThreaded`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fkEndFormTypeConnection`
+    FOREIGN KEY (`fkEndFormType`)
+    REFERENCES `Caterpillar`.`EndFormType` (`pkEndFormType`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fkConnectionConnection`
+    FOREIGN KEY (`fkConnectionType`)
+    REFERENCES `Caterpillar`.`ConnectionType` (`pkConnectionType`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
