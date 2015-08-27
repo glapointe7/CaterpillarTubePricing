@@ -1,0 +1,11 @@
+tube.csv - some values of the column 'length' has changed as per Kaggle forum (https://www.kaggle.com/c/caterpillar-tube-pricing/forums/t/15001/ta-04114/83730):
+TA-00152 - 19
+TA-00154 - 75
+TA-00156 - 24
+TA-01098 - 10
+TA-01631 - 48
+TA-03520 - 46
+TA-04114 - 135
+TA-17390 - 40
+TA-18227 - 74
+TA-18229 - 51

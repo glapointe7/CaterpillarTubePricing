@@ -46,30 +46,17 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
         insertIntoTable = function(table, Values_List)
         {
             query <- paste("INSERT INTO ", table, " VALUES(", paste(Values_List, collapse = ", ", sep = ""), ")", sep = "")
-            cat(paste(query, "\n"), file = "inserts.txt", append = TRUE)
-            #tryCatch(
-                res <- dbSendQuery(private$con, query)#, 
-            #    error = function(err) {e <- dbGetException(private$con); print(paste(e$errMsg, "\n", err))}, 
-            #    finally = dbDisconnect(private$con)
-            #)
+            #cat(paste(query, "\n"), file = "inserts.txt", append = TRUE)
+            res <- dbSendQuery(private$con, query)
         },
         
         ## Get the primary key value from a field name and a table given as inputs.
         getPkValueFromName = function(table, field_name, field_value)
         {
             query <- paste("SELECT pk", table, " FROM ", table, " WHERE ", field_name, " = '", field_value, "'", sep = "")
-            #tryCatch(
-                res <- dbSendQuery(private$con, query)#, 
-            #    error = function(err) {print(err)}, 
-            #    finally = dbDisconnect(private$con)
-            #)
+            res <- dbSendQuery(private$con, query)
             result <- fetch(res, n = -1)
             result[1, paste("pk", table, sep = "")]
-        },
-        
-        getConnection = function()
-        {
-            private$con
         }
     )
 )

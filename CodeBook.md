@@ -10,7 +10,7 @@ The dataset is comprised of a large number of relational tables that describe th
 ### Dataset Codes
 In this entire dataset, there is no blank cell. The `NA` values mean that a value is not applicable to a specific field property. The value `0` always means a numerical value, not a boolean value like `false` nor a missing value. The notation `Y` means `YES` and can be treated as the value `1`. The notation `N` means `NO` and can be treated as the value `0`. Finally, the value `NONE` means that there is no such component on a certain tube assembly. We will treat `NA` and `NONE` as `NA` values.
 
-We can also see the code `Other` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list.
+We can also see the code `Other` which is associated with the identifiant `9999`. This means that this element is another element which is not contained in the given list. This value means also a MISSING value. For example, if `length = 9999`, this means that the length is unknown or missing.
 
 There are also many identifiant codes used in fields [Table]_id. Here are the list:
 
@@ -73,6 +73,8 @@ These files contain information on price quotes from our suppliers. Prices can b
 #### tube.csv
 
 This file contains information on tube assemblies, which are the primary focus of the competition. Tube Assemblies are made of multiple parts. The main piece is the tube which has a specific diameter, wall thickness, length, number of bends and bend radius. Either end of the tube (End A or End X) typically has some form of end connection allowing the tube assembly to attach to other features. Special tooling is typically required for short end straight lengths (end_a_1x, end_a_2x refer to if the end length is less than 1 times or 2 times the tube diameter, respectively). Other components can be permanently attached to a tube such as bosses, brackets or other custom features.
+
+Note: there is no tube assembly TA-19491.
 
 Source of images: [https://www.kaggle.com/c/caterpillar-tube-pricing/data](https://www.kaggle.com/c/caterpillar-tube-pricing/data)
 <img src="Images/tube1.png" alt="Drawing" style="width: 500px;"/> <br /><br />
@@ -145,6 +147,8 @@ This file contains the list of all of the components used. Component_type_id ref
 These files contain the information classified type of components. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
 
 Note that each `component_id` is unique. The list of all components used in files `comp_[type].csv` corresponds exactly to the list of components in the file `components.csv`.
+
+The column `thread_size` in the file `comp_nut.csv` contains codes like `M10` for example. The `M` means metric and the number is the nominal diameter. Source taken from [ISO metric screw thread Preferred sizes](https://en.wikipedia.org/wiki/ISO_metric_screw_thread#Preferred_sizes).
 
 
 #### type_[type].csv
