@@ -41,22 +41,20 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
             dbDisconnect(private$con)
         },
         
-        ## Insert data into a table 'table', where 'Values_List' is a vector of values since we don't need to insert for specific columns.
-        ## Print the insert statements to a file to get every insertion done in the database.
-        insertIntoTable = function(table, Values_List)
+        ## Insert data into a table 'table', where 'values' is a string of values since we don't need to insert for specific columns.
+        insertIntoTable = function(table, values)
         {
-            query <- paste("INSERT INTO ", table, " VALUES(", paste(Values_List, collapse = ", ", sep = ""), ")", sep = "")
-            #cat(paste(query, "\n"), file = "inserts.txt", append = TRUE)
+            query <- paste0("INSERT INTO ", table, " VALUES(", values, ");")
             res <- dbSendQuery(private$con, query)
         },
         
         ## Get the primary key value from a field name and a table given as inputs.
         getPkValueFromName = function(table, field_name, field_value)
         {
-            query <- paste("SELECT pk", table, " FROM ", table, " WHERE ", field_name, " = '", field_value, "'", sep = "")
+            query <- paste0("SELECT pk", table, " FROM ", table, " WHERE ", field_name, " = '", field_value, "'")
             res <- dbSendQuery(private$con, query)
             result <- fetch(res, n = -1)
-            result[1, paste("pk", table, sep = "")]
+            result[1, paste0("pk", table)]
         }
     )
 )

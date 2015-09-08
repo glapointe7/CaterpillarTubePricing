@@ -3,36 +3,6 @@ source("Scripts/DatabaseManipulation.R")
 ## To perform SQL selection queries on csv file reading.
 library(sqldf)
 
-## Transform a (Yes/No) or (Y/N) data to (0/1). The N/A case returns NULL.
-transformToBit <- function(data)
-{
-    switch(
-        data,
-        Yes = 1,
-        Y = 1,
-        No = 0,
-        N = 0,
-        "NA" = "NULL"
-    )
-}
-
-## Convert values 9999, NA or others from the dataset to the one corresponding for the MySQL database.
-convertSpecialValues <- function(data, pk_other)
-{
-    switch(
-        data,
-        "9999" = pk_other,
-        "NA"   = "NULL",
-        as.integer(substring(data, 3))
-    )
-}
-
-## Extract the nominal diameter from a code like 'M00' where the code is explained in the CodeBook.
-extractNominalDiameter <- function(value)
-{
-    as.numeric(substring(value, 2))
-}
-
 #####################################################################
 # Class to insert data in tables of the Caterpillar database.
 #####################################################################
@@ -40,26 +10,41 @@ CaterpillarTables <- R6Class("CaterpillarTables",
     private = list(
         database = NULL,
         
-        ## Build a string of specs used by a tube assembly.
-        addSpecsUsedInTubeAssembly = function(Tube_Specs_Row)
+        ## Insert the 4 thread connections in the table 'Component_Connection' for each row of the comp_threaded file.
+        addThreadedConnectionsData = function(data, data_threaded)
         {
-            ## Open the file once and store data in a dataframe should be faster by using data[i] which is the ith tube assembly.
-            #pk_tube <- paste("TA-", formatC(tube_id, width = 5, format = "d", flag = "0"), sep = "")
-            #query <- paste("SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file WHERE tube_assembly_id = '", pk_tube, "'", sep = "")
-            #data <- read.csv.sql("Dataset/specs.csv", sql = query)
+            ## Change the component ids to match with primary key integers. (Removed the prefix "C-")
+            connections <- data[, 6:29]
+            connections <- cbind(component_id = data_threaded$component_id, connections)
+            ids <- c("end_form_id_1", "connection_type_id_1", "end_form_id_2", "connection_type_id_2", 
+                     "end_form_id_3", "connection_type_id_3", "end_form_id_4", "connection_type_id_4")
+            connections[, ids] <- apply(connections[, ids], 2, function(x){ifelse(x != "NA", as.integer(substring(x, 3)), "NA")})
             
-            ## There are a maximum of 10 specs and a minimum of 0 spec for each tube assembly.
-            specs <- ""
-            i <- 1
-            spec_value <- Tube_Specs_Row[1, paste("spec", i, sep = "")]
-            while(spec_value != "NA" && i <= 10)
+            values <- ""
+            for(i in 1:3)
             {
-                specs <- paste(specs, Tube_Specs_Row[1, paste("spec", i, sep = "")], sep = ",")
-                i <- i + 1
-                spec_value <- Tube_Specs_Row[1, paste("spec", i, sep = "")]
+                end_form_id <- paste0("end_form_id_", i)
+                connection_type_id <- paste0("connection_type_id_", i)
+                length <- paste0("length_", i)
+                thread_size <- paste0("thread_size_", i)
+                thread_pitch <- paste0("thread_pitch_", i)
+                nominal_size <- paste0("nominal_size_", i)
+                
+                components <- connections[, c("component_id", end_form_id, connection_type_id, length, thread_size, thread_pitch, nominal_size)]
+                components[,end_form_id] <- ifelse(components[,end_form_id] == "NA", "NULL", components[,end_form_id])
+                components[,connection_type_id] <- ifelse(components[,connection_type_id] == "NA", "NULL", components[,connection_type_id])
+                components[,length] <- ifelse(components[,length] == "NA", "NULL", components[,length])
+                components[,thread_size] <- ifelse(components[,thread_size] == "NA", "NULL", components[,thread_size])
+                components[,thread_pitch] <- ifelse(components[,thread_pitch] == "NA", "NULL", components[,thread_pitch])
+                components[,nominal_size] <- ifelse(components[,nominal_size] %in% c("NA", 9999), "NULL", components[,nominal_size])
+                
+                rows_values <- apply(components, 1, function(x){paste(x[x[paste0("end_form_id_", i)] != "NULL"], collapse = ",")})
+                values <- paste0(values, paste(rows_values[grepl(",", rows_values)], collapse = "),("), "),(")
             }
-            
-            specs
+            ## This is the only one with a 4th connection. Since there's only one, the collapse won't add "),(" as needed. 
+            ## Thus, we have to add manually this connection.
+            values <- paste0(values, "605,1,2,41.7,1.187,12,NULL")
+            private$database$insertIntoTable("Component_Connection", values)
         }
     ),
     
@@ -82,21 +67,18 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             Types_List <- list(component = "ComponentType", connection = "ConnectionType", end_form = "EndFormType")
             for(type in names(Types_List))
             {
-                data <- read.csv.sql(paste("Dataset/type_", type, ".csv", sep = ""), sql = "SELECT name FROM file")
-                for(i in 1:nrow(data))
-                {
-                    Values_List <- c(
-                        "NULL",
-                        paste("'", data[i, "name"], "'", sep = "")
-                    )
-                    private$database$insertIntoTable(Types_List[[type]], Values_List)
-                }
+                data <- read.csv.sql(paste0("Dataset/type_", type, ".csv"), sql = "SELECT name FROM file")
+                data <- cbind(primary_key = "NULL", data)
+                
+                rows_values <- apply(data, 1, paste, collapse = ", '")
+                values <- paste0(paste(rows_values, collapse = "'), ("), "'")
                 
                 ## Insert the component type 'OTHER' since there's no such type defined, but it is used in every component file.
                 if(type == "component")
                 {
-                    private$database$insertIntoTable(Types_List[[type]], c("NULL", "'Other'"))
+                    values <- paste0(values, "), (NULL, 'Other'")
                 }
+                private$database$insertIntoTable(Types_List[[type]], values)
             }
             closeAllConnections()
             cat("DONE\n")
@@ -108,17 +90,19 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentType table...")
             data <- read.csv.sql("Dataset/components.csv", sql = "SELECT name, component_type_id FROM file")
             closeAllConnections()
+            
+            ## ComponentType must be filled before using this line.
             pk_component_type <- private$database$getPkValueFromName("ComponentType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    paste("'", data[i, "name"], "'", sep = ""), 
-                    ifelse(data[i, "component_type_id"] == "OTHER", pk_component_type, as.integer(substring(data[i, "component_type_id"], 4)))
-                )
-                private$database$insertIntoTable("Component", Values_List)
-            }
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_type_id <- ifelse(data[, "component_type_id"] == "OTHER", pk_component_type, as.integer(substring(data[, "component_type_id"], 4)))
+            data$name <- paste0("'", data$name, "'")
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "), (")
+            private$database$insertIntoTable("Component", values)
+            
             cat("DONE\n")
         },
         
@@ -127,14 +111,11 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         {
             cat("Process insertions into TubeEndForm table...")
             data <- read.csv.sql("Dataset/tube_end_form.csv", sql = "SELECT forming FROM file")
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    transformToBit(data[i, "forming"])
-                )
-                private$database$insertIntoTable("TubeEndForm", Values_List)
-            }
+            
+            data$forming <- ifelse(data$forming == "Yes", 1, 0)
+            values <- paste0("NULL,", paste(data$forming, collapse = "),(NULL,"))
+            
+            private$database$insertIntoTable("TubeEndForm", values)
             cat("DONE\n")
         },
         
@@ -146,33 +127,32 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/tube.csv", sql = "SELECT tube_assembly_id, material_id, diameter, wall, length, num_bends, bend_radius, end_a_1x, end_a_2x, 
                                                                    end_x_1x, end_x_2x, end_a, end_x, num_boss, num_bracket, other FROM file")
             
-            query <- "SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file"
-            data_specs <- read.csv.sql("Dataset/specs.csv", sql = query)
+            data_specs <- read.csv.sql("Dataset/specs.csv", sql = "SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                specs <- private$addSpecsUsedInTubeAssembly(data_specs[i, ])
-                Values_List <- c(
-                    as.integer(substring(data[i, "tube_assembly_id"], 4)),
-                    ifelse(data[i, "material_id"] == "NA", "NULL", paste("'", data[i, "material_id"], "'", sep = "")),
-                    ifelse(data[i, "diameter"] == "NA", "NULL", data[i, "diameter"]),
-                    ifelse(data[i, "wall"] == "NA", "NULL", data[i, "wall"]),
-                    ifelse(data[i, "length"] == "NA", "NULL", data[i, "length"]),
-                    ifelse(data[i, "num_bends"] == "NA", "NULL", data[i, "num_bends"]),
-                    ifelse(data[i, "bend_radius"] == "NA", "NULL", data[i, "bend_radius"]),
-                    transformToBit(data[i, "end_a_1x"]),
-                    transformToBit(data[i, "end_a_2x"]),
-                    transformToBit(data[i, "end_x_1x"]),
-                    transformToBit(data[i, "end_x_2x"]),
-                    ifelse(data[i, "end_a"] == "NONE", "NULL", as.integer(substring(data[i, "end_a"], 4))),
-                    ifelse(data[i, "end_x"] == "NONE", "NULL", as.integer(substring(data[i, "end_x"], 4))),
-                    data[i, "num_boss"],
-                    data[i, "num_bracket"],
-                    data[i, "other"],
-                    ifelse(specs == "", "NULL", paste("'", specs, "'", sep = ""))
-                )
-                private$database$insertIntoTable("TubeAssembly", Values_List)
-            }
+            
+            ## There are a maximum of 10 specs and a minimum of 0 spec for each tube assembly.
+            specs <- apply(data_specs, 1, function(x){paste(x[x != "NA"], collapse = ",")})
+            
+            ## Transform the data.
+            data$tube_assembly_id <- as.integer(substring(data$tube_assembly_id, 4))
+            data$material_id <- ifelse(data$material_id == "NA", "NULL", paste0("'", data$material_id, "'"))
+            data$diameter <- ifelse(data$diameter == "NA", "NULL", data$diameter)
+            data$wall <- ifelse(data$wall == "NA", "NULL", data$wall)
+            data$length <- ifelse(data$length == "NA", "NULL", data$length)
+            data$num_bends <- ifelse(data$num_bends == "NA", "NULL", data$num_bends)
+            data$bend_radius <- ifelse(data$bend_radius == "NA", "NULL", data$bend_radius)
+            data$end_a_1x <- ifelse(data$end_a_1x == "Y", 1, 0)
+            data$end_a_2x <- ifelse(data$end_a_2x == "Y", 1, 0)
+            data$end_x_1x <- ifelse(data$end_x_1x == "Y", 1, 0)
+            data$end_x_2x <- ifelse(data$end_x_2x == "Y", 1, 0)
+            data$end_a <- ifelse(data$end_a == "NONE", "NULL", as.integer(substring(data$end_a, 4)))
+            data$end_x <- ifelse(data$end_x == "NONE", "NULL", as.integer(substring(data$end_x, 4)))
+            data$specs <- ifelse(specs == "", "NULL", paste0("'", specs, "'"))
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "), (")
+            private$database$insertIntoTable("TubeAssembly", values)
+            
             cat("DONE\n")
         },
         
@@ -183,21 +163,18 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
                                                                         bracket_pricing, quantity, cost FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "tube_assembly_id"], 4)),
-                    paste("'", data[i, "supplier"], "'", sep = ""),
-                    paste("'", data[i, "quote_date"], "'", sep = ""),
-                    data[i, "annual_usage"],
-                    data[i, "min_order_quantity"],
-                    transformToBit(data[i, "bracket_pricing"]),
-                    data[i, "quantity"],
-                    data[i, "cost"]
-                )
-                private$database$insertIntoTable("TubeAssemblyPricing", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$tube_assembly_id <- as.integer(substring(data$tube_assembly_id, 4))
+            data$supplier <- paste0("'", data$supplier, "'")
+            data$quote_date <- paste0("'", data$quote_date, "'")
+            data$bracket_pricing <- ifelse(data$bracket_pricing == "Yes", 1, 0)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "), (")
+            private$database$insertIntoTable("TubeAssemblyPricing", values)
+            
             cat("DONE\n")
         },
         
@@ -206,39 +183,40 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         {
             cat("Process insertions into TubeAssembly_Component table...")
             query <- "SELECT tube_assembly_id, component_id_1, quantity_1, component_id_2, quantity_2, component_id_3, quantity_3, component_id_4, quantity_4, 
-                             component_id_5, quantity_5, component_id_6, quantity_6, component_id_7, quantity_7, component_id_8, quantity_8 FROM file"
+                             component_id_5, quantity_5, component_id_6, quantity_6, component_id_7, quantity_7, component_id_8, quantity_8 FROM file 
+                      WHERE component_id_1 <> 'NA'"
             data <- read.csv.sql("Dataset/bill_of_materials.csv", sql = query)
-            closeAllConnections()
-            for(i in 1:nrow(data))
+            
+            ## Transform the data.
+            pk_component_other <- private$database$getPkValueFromName("Component", "name", "Other")
+            data$tube_assembly_id <- as.integer(substring(data$tube_assembly_id, 4))
+            
+            ## Change the component ids to match with primary key integers. (Removed the prefix "C-")
+            component_id_cols <- c("component_id_1", "component_id_2", "component_id_3", "component_id_4", "component_id_5", "component_id_6", "component_id_7", "component_id_8")
+            data[, component_id_cols] <- apply(data[, component_id_cols], 2, function(x)
             {
-                ## If the tube doesn't contain any component, we insert only the tube assembly ID.
-                tube_id <- as.integer(substring(data[i, "tube_assembly_id"], 4))
-                if(data[i, "component_id_1"] == "NA")
-                {
-                    Values_List <- c(
-                        tube_id,
-                        "NULL",
-                        "NULL"
-                    )
-                    private$database$insertIntoTable("TubeAssembly_Component", Values_List)
-                }
-                else
-                {
-                    j <- 1
-                    component_id <- data[i, "component_id_1"]
-                    while(component_id != "NA" && j <= 8)
-                    {
-                        Values_List <- c(
-                            tube_id,
-                            as.integer(substring(component_id, 3)),
-                            data[i, paste("quantity_", j, sep = "")]
-                        )
-                        private$database$insertIntoTable("TubeAssembly_Component", Values_List)
-                        j <- j + 1
-                        component_id <- data[i, paste("component_id_", j, sep = "")]
-                    }
-                }
+                ifelse(x != "NA", ifelse(x == 9999, pk_component_other, as.integer(substring(x, 3))), "NA")
+            })
+            
+            ## Split columns in dataframes of 3 columns: (tube_assembly_id, component_id, quantity)
+            library(stringr)
+            values <- ""
+            for(i in 1:7)
+            {
+                components <- data[, c("tube_assembly_id", paste0("component_id_", i), paste0("quantity_", i))]
+                rows_values <- apply(components, 1, function(x){paste(x[x != "NA"], collapse = ",")})
+                
+                ## We keep only string with two comas since the dataset contains NA components with a non NA quantity associated.
+                ## This behaviour is absurd so we ensure we won't let that happens.
+                rows_values <- rows_values[str_count(rows_values, ",") == 2]
+                values <- paste0(values, paste(rows_values, collapse = "),("), "),(")
             }
+            ## Since we ensure that there is only one tube assembly with 8 different components.
+            ## The collapse won't do anything in that case, so we have to manually enter the values.
+            values <- paste0(values, "11524,1981,1")
+            
+            private$database$insertIntoTable("TubeAssembly_Component", values)
+            
             cat("DONE\n")
         },
         
@@ -248,16 +226,17 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentOther table...")
             data <- read.csv.sql("Dataset/comp_other.csv", sql = "SELECT component_id, part_name, weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    paste("'", data[i, "part_name"], "'", sep = ""),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentOther", Values_List)
-            }
+            
+            ## Transform the data. The weights with NA are converted to 0...
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$part_name <- paste0("'", data$part_name, "'")
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentOther", values)
+            
             cat("DONE\n")
         },
         
@@ -273,37 +252,37 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "adaptor_angle"] == "NA", "NULL", data[i, "adaptor_angle"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    
-                    convertSpecialValues(data[i, "end_form_id_1"], pk_end_form_other),
-                    convertSpecialValues(data[i, "connection_type_id_1"], pk_connection_other),
-                    
-                    ifelse(data[i, "length_1"] == "NA", "NULL", data[i, "length_1"]),
-                    ifelse(data[i, "thread_size_1"] == "NA", "NULL", data[i, "thread_size_1"]),
-                    ifelse(data[i, "thread_pitch_1"] == "NA", "NULL", data[i, "thread_pitch_1"]),
-                    ifelse(data[i, "nominal_size_1"] == "NA", "NULL", data[i, "nominal_size_1"]),
-                    
-                    convertSpecialValues(data[i, "end_form_id_2"], pk_end_form_other),
-                    convertSpecialValues(data[i, "connection_type_id_2"], pk_connection_other),
-                    
-                    ifelse(data[i, "length_2"] == "NA", "NULL", data[i, "length_2"]),
-                    ifelse(data[i, "thread_size_2"] == "NA", "NULL", data[i, "thread_size_2"]),
-                    ifelse(data[i, "thread_pitch_2"] == "NA", "NULL", data[i, "thread_pitch_2"]),
-                    ifelse(data[i, "nominal_size_2"] == "NA", "NULL", data[i, "nominal_size_2"]),
-                    ifelse(data[i, "hex_size"] == "NA", "NULL", data[i, "hex_size"]),
-                    transformToBit(data[i, "unique_feature"]),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentAdaptor", Values_List)
-            }
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$adaptor_angle <- ifelse(data$adaptor_angle == "NA", "NULL", data$adaptor_angle)
+            data$overall_length <- ifelse(data$overall_length == "NA", "NULL", data$overall_length)
+            
+            data$end_form_id_1 <- as.integer(substring(data$end_form_id_1, 3))
+            data$connection_type_id_1 <- ifelse(data$connection_type_id_1 == "NA", "NULL", as.integer(substring(data$connection_type_id_1, 3)))
+            data$length_1 <- ifelse(data$length_1 == "NA", "NULL", data$length_1)
+            data$thread_size_1 <- ifelse(data$thread_size_1 == "NA", "NULL", data$thread_size_1)
+            data$thread_pitch_1 <- ifelse(data$thread_pitch_1 == "NA", "NULL", data$thread_pitch_1)
+            data$nominal_size_1 <- ifelse(data$nominal_size_1 == "NA", "NULL", data$nominal_size_1)
+            
+            data$end_form_id_2 <- ifelse(data$end_form_id_2 == 9999, pk_end_form_other, as.integer(substring(data$end_form_id_2, 3)))
+            data$connection_type_id_2 <- ifelse(data$connection_type_id_2 == 9999, pk_connection_other, 
+                                                ifelse(data$connection_type_id_2 == "NA", "NULL", as.integer(substring(data$connection_type_id_2, 3))))
+            data$length_2 <- ifelse(data$length_2 == "NA", "NULL", data$length_2)
+            data$thread_size_2 <- ifelse(data$thread_size_2 %in% c("NA", "9999"), "NULL", data$thread_size_2)
+            data$thread_pitch_2 <- ifelse(data$thread_pitch_2 %in% c("NA", "9999"), "NULL", data$thread_pitch_2)
+            data$nominal_size_2 <- ifelse(data$nominal_size_2 == "NA", "NULL", data$nominal_size_2)
+            
+            data$hex_size <- ifelse(data$hex_size == "NA", "NULL", data$hex_size)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentAdaptor", values)
+            
             cat("DONE\n")
         },
         
@@ -317,30 +296,27 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             closeAllConnections()
             pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "type"] == "NA", "NULL", paste("'", data[i, "type"], "'", sep = "")),
-                    
-                    convertSpecialValues(data[i, "connection_type_id"], pk_connection_other),
-                    
-                    ifelse(data[i, "outside_shape"] == "NA", "NULL", paste("'", data[i, "outside_shape"], "'", sep = "")),
-                    ifelse(data[i, "base_type"] == "NA", "NULL", paste("'", data[i, "base_type"], "'", sep = "")),
-                    ifelse(data[i, "height_over_tube"] == "NA", "NULL", data[i, "height_over_tube"]),
-                    ifelse(data[i, "bolt_pattern_long"] == "NA", "NULL", data[i, "bolt_pattern_long"]),
-                    ifelse(data[i, "bolt_pattern_wide"] == "NA", "NULL", data[i, "bolt_pattern_wide"]),
-                    transformToBit(data[i, "groove"]),
-                    ifelse(data[i, "base_diameter"] == "NA", "NULL", data[i, "base_diameter"]),
-                    ifelse(data[i, "shoulder_diameter"] == "NA", "NULL", data[i, "shoulder_diameter"]),
-                    transformToBit(data[i, "unique_feature"]),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentBoss", Values_List)
-            }
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$type <- ifelse(data$type == "NA", "NULL", paste0("'", data$type, "'"))
+            data$connection_type_id <- ifelse(data$connection_type_id == 9999, pk_connection_other, as.integer(substring(data$connection_type_id, 3)))
+            data$outside_shape <- ifelse(data$outside_shape == "NA", "NULL", paste0("'", data$outside_shape, "'"))
+            data$base_type <- ifelse(data$base_type == "NA", "NULL", paste0("'", data$base_type, "'"))
+            data$bolt_pattern_long <- ifelse(data$bolt_pattern_long == "NA", "NULL", data$bolt_pattern_long)
+            data$bolt_pattern_wide <- ifelse(data$bolt_pattern_wide == "NA", "NULL", data$bolt_pattern_wide)
+            data$groove <- ifelse(data$groove == "Yes", 1, 0)
+            data$base_diameter <- ifelse(data$base_diameter == "NA", "NULL", data$base_diameter)
+            data$shoulder_diameter <- ifelse(data$shoulder_diameter == "NA", "NULL", data$shoulder_diameter)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentBoss", values)
+            
             cat("DONE\n")
         },
         
@@ -352,29 +328,30 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                                                          overall_length, thickness, drop_length, elbow_angle, mj_class_code, mj_plug_class_code, 
                                                                          plug_diameter, groove, unique_feature, orientation, weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "bolt_pattern_long"] == "NA", "NULL", data[i, "bolt_pattern_long"]),
-                    ifelse(data[i, "bolt_pattern_wide"] == "NA", "NULL", data[i, "bolt_pattern_wide"]),
-                    ifelse(data[i, "extension_length"] == "NA", "NULL", data[i, "extension_length"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    ifelse(data[i, "thickness"] == "NA", "NULL", data[i, "thickness"]),
-                    ifelse(data[i, "drop_length"] == "NA", "NULL", data[i, "drop_length"]),
-                    ifelse(data[i, "elbow_angle"] == "NA", "NULL", data[i, "elbow_angle"]),
-                    ifelse(data[i, "mj_class_code"] == "NA", "NULL", paste("'", data[i, "mj_class_code"], "'", sep = "")),
-                    ifelse(data[i, "mj_plug_class_code"] == "NA", "NULL", paste("'", data[i, "mj_plug_class_code"], "'", sep = "")),
-                    ifelse(data[i, "plug_diameter"] == "NA", "NULL", data[i, "plug_diameter"]),
-                    transformToBit(data[i, "groove"]),
-                    transformToBit(data[i, "unique_feature"]),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentElbow", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$bolt_pattern_long <- ifelse(data$bolt_pattern_long == "NA", "NULL", data$bolt_pattern_long)
+            data$bolt_pattern_wide <- ifelse(data$bolt_pattern_wide == "NA", "NULL", data$bolt_pattern_wide)
+            data$extension_length <- ifelse(data$extension_length == "NA", "NULL", data$extension_length)
+            data$overall_length <- ifelse(data$overall_length == "NA", "NULL", data$overall_length)
+            data$thickness <- ifelse(data$thickness == "NA", "NULL", data$thickness)
+            data$drop_length <- ifelse(data$drop_length == "NA", "NULL", data$drop_length)
+            data$elbow_angle <- ifelse(data$elbow_angle == "NA", "NULL", data$elbow_angle)
+            data$mj_class_code <- ifelse(data$mj_class_code == "NA", "NULL", paste0("'", data$mj_class_code, "'"))
+            data$mj_plug_class_code <- ifelse(data$mj_plug_class_code == "NA", "NULL", paste0("'", data$mj_plug_class_code, "'"))
+            data$plug_diameter <- ifelse(data$plug_diameter == "NA", "NULL", data$plug_diameter)
+            data$groove <- ifelse(data$groove == "Yes", 1, 0)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentElbow", values)
+            
             cat("DONE\n")
         },
         
@@ -385,22 +362,17 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_float.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, thickness, 
                                                                          orientation, weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "bolt_pattern_long"] == "NA", "NULL", data[i, "bolt_pattern_long"]),
-                    ifelse(data[i, "bolt_pattern_wide"] == "NA", "NULL", data[i, "bolt_pattern_wide"]),
-                    ifelse(data[i, "extension_length"] == "NA", "NULL", data[i, "extension_length"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    ifelse(data[i, "thickness"] == "NA", "NULL", data[i, "thickness"]),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentFloat", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentFloat", values)
+            
             cat("DONE\n")
         },
         
@@ -411,22 +383,21 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_hfl.csv", sql = "SELECT component_id, component_type_id, hose_diameter, corresponding_shell, coupling_class, 
                                                                        material, plating, orientation, weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "hose_diameter"] == "NA", "NULL", data[i, "hose_diameter"]),
-                    as.integer(substring(data[i, "corresponding_shell"], 3)),
-                    ifelse(data[i, "coupling_class"] == "NA", "NULL", paste("'", data[i, "coupling_class"], "'", sep = "")),
-                    ifelse(data[i, "material"] == "NA", "NULL", paste("'", data[i, "material"], "'", sep = "")),
-                    ifelse(data[i, "plating"] == "NA", "NULL", transformToBit(data[i, "plating"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentHfl", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$corresponding_shell <- as.integer(substring(data$corresponding_shell, 3))
+            data$coupling_class <- paste0("'", data$coupling_class, "'")
+            data$material <- paste0("'", data$material, "'")
+            data$plating <- ifelse(data$plating == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentHfl", values)
+            
             cat("DONE\n")
         },
         
@@ -437,24 +408,23 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_nut.csv", sql = "SELECT component_id, component_type_id, hex_nut_size, seat_angle, length, thread_size, 
                                                                        thread_pitch, diameter, blind_hole, orientation, weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "hex_nut_size"] == "NA", "NULL", data[i, "hex_nut_size"]),
-                    ifelse(data[i, "seat_angle"] == "NA", "NULL", data[i, "seat_angle"]),
-                    ifelse(data[i, "length"] == "NA", "NULL", data[i, "length"]),
-                    ifelse(substring(data[i, "thread_size"], 1, 1) == "M", extractNominalDiameter(data[i, "thread_size"]), data[i, "thread_size"]),
-                    ifelse(data[i, "thread_pitch"] == "NA", "NULL", data[i, "thread_pitch"]),
-                    ifelse(data[i, "diameter"] == "NA", "NULL", data[i, "diameter"]),
-                    ifelse(data[i, "blind_hole"] == "NA", "NULL", transformToBit(data[i, "blind_hole"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentNut", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$hex_nut_size <- ifelse(data$hex_nut_size == "NA", "NULL", data$hex_nut_size)
+            data$seat_angle <- ifelse(data$seat_angle == "NA", "NULL", data$seat_angle)
+            data$thread_size <- ifelse(substring(data$thread_size, 1, 1) == "M", substring(data$thread_size, 2), data$thread_size)
+            data$diameter <- ifelse(data$diameter == "NA", "NULL", data$diameter)
+            data$blind_hole <- ifelse(data$blind_hole == "NA", "NULL", ifelse(data$blind_hole == "Yes", 1, 0))
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentNut", values)
+            
             cat("DONE\n")
         },
         
@@ -465,26 +435,21 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_sleeve.csv", sql = "SELECT component_id, component_type_id, connection_type_id, length, intended_nut_thread, 
                                                                           intended_nut_pitch, unique_feature, plating, orientation, weight FROM file")
             closeAllConnections()
-            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    convertSpecialValues(data[i, "connection_type_id"], pk_connection_other),
-                    ## Missing value for length is 9999. There is no NA for this type of component.
-                    ifelse(data[i, "length"] == "9999", "NULL", data[i, "length"]),
-                    ifelse(data[i, "intended_nut_thread"] == "NA", "NULL", data[i, "intended_nut_thread"]),
-                    ifelse(data[i, "intended_nut_pitch"] == "NA", "NULL", data[i, "intended_nut_pitch"]),
-                    ifelse(data[i, "unique_feature"] == "NA", "NULL", transformToBit(data[i, "unique_feature"])),
-                    ifelse(data[i, "plating"] == "NA", "NULL", transformToBit(data[i, "plating"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentSleeve", Values_List)
-            }
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$connection_type_id <- as.integer(substring(data$connection_type_id, 3))
+            data$length <- ifelse(data$length == 9999, "NULL", data$length)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$plating <- ifelse(data$plating == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentSleeve", values)
+            
             cat("DONE\n")
         },
         
@@ -496,25 +461,25 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                                                             overall_length, thickness, mj_class_code, groove, unique_feature, orientation, 
                                                                             weight FROM file")
             closeAllConnections()
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "bolt_pattern_long"] == "NA", "NULL", data[i, "bolt_pattern_long"]),
-                    ifelse(data[i, "bolt_pattern_wide"] == "NA", "NULL", data[i, "bolt_pattern_wide"]),
-                    ifelse(data[i, "head_diameter"] == "NA", "NULL", data[i, "head_diameter"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    ifelse(data[i, "thickness"] == "NA", "NULL", data[i, "thickness"]),
-                    ifelse(data[i, "mj_class_code"] == "NA", "NULL", paste("'", data[i, "mj_class_code"], "'", sep = "")),
-                    ifelse(data[i, "groove"] == "NA", "NULL", transformToBit(data[i, "groove"])),
-                    ifelse(data[i, "unique_feature"] == "NA", "NULL", transformToBit(data[i, "unique_feature"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentStraight", Values_List)
-            }
+            
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- as.integer(substring(data$component_type_id, 4))
+            data$bolt_pattern_long <- ifelse(data$bolt_pattern_long == "NA", "NULL", data$bolt_pattern_long)
+            data$bolt_pattern_wide <- ifelse(data$bolt_pattern_wide == "NA", "NULL", data$bolt_pattern_wide)
+            data$head_diameter <- ifelse(data$head_diameter == "NA", "NULL", data$head_diameter)
+            data$overall_length <- ifelse(data$overall_length == "NA", "NULL", data$overall_length)
+            data$mj_class_code <- ifelse(data$mj_class_code == "NA", "NULL", paste0("'", data$mj_class_code, "'"))
+            data$groove <- ifelse(data$groove == "Yes", 1, 0)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            data$weight <- ifelse(data$weight == "NA", "NULL", data$weight)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentStraight", values)
+            
             cat("DONE\n")
         },
         
@@ -526,78 +491,53 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                                                        overall_length, thickness, drop_length, mj_class_code, mj_plug_class_code, groove, 
                                                                        unique_feature, orientation, weight FROM file")
             closeAllConnections()
-            pk_component_type <- private$database$getPkValueFromName("ComponentType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                Values_List <- c(
-                    "NULL",
-                    as.integer(substring(data[i, "component_id"], 3)),
-                    ifelse(data[i, "component_type_id"] == "OTHER", pk_component_type, as.integer(substring(data[i, "component_type_id"], 4))),
-                    ifelse(data[i, "bolt_pattern_long"] == "NA", "NULL", data[i, "bolt_pattern_long"]),
-                    ifelse(data[i, "bolt_pattern_wide"] == "NA", "NULL", data[i, "bolt_pattern_wide"]),
-                    ifelse(data[i, "extension_length"] == "NA", "NULL", data[i, "extension_length"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    ifelse(data[i, "thickness"] == "NA", "NULL", data[i, "thickness"]),
-                    ifelse(data[i, "drop_length"] == "NA", "NULL", data[i, "drop_length"]),
-                    ifelse(data[i, "mj_class_code"] == "NA", "NULL", paste("'", data[i, "mj_class_code"], "'", sep = "")),
-                    ifelse(data[i, "mj_plug_class_code"] == "NA", "NULL", paste("'", data[i, "mj_plug_class_code"], "'", sep = "")),
-                    ifelse(data[i, "groove"] == "NA", "NULL", transformToBit(data[i, "groove"])),
-                    ifelse(data[i, "unique_feature"] == "NA", "NULL", transformToBit(data[i, "unique_feature"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentTee", Values_List)
-            }
+            ## Transform the data.
+            data <- cbind(primary_key = "NULL", data)
+            data$component_id <- as.integer(substring(data$component_id, 3))
+            data$component_type_id <- private$database$getPkValueFromName("ComponentType", "name", "Other")
+            data$mj_class_code <- paste0("'", data$mj_class_code, "'")
+            data$mj_plug_class_code <- paste0("'", data$mj_plug_class_code, "'")
+            data$groove <- ifelse(data$groove == "Yes", 1, 0)
+            data$unique_feature <- ifelse(data$unique_feature == "Yes", 1, 0)
+            data$orientation <- ifelse(data$orientation == "Yes", 1, 0)
+            
+            rows_values <- apply(data, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentTee", values)
+            
             cat("DONE\n")
         },
         
         ## Add all rows from the file Dataset/comp_threaded.csv to the table ComponentThreaded in the Caterpillar database.
         addThreadedComponentsData = function()
         {
-            cat("Process insertions into ComponentThreaded table...")
+            cat("Process insertions into ComponentThreaded and Component_Connection table...")
             data <- read.csv.sql("Dataset/comp_threaded.csv", sql = "SELECT component_id, component_type_id, adaptor_angle, overall_length, hex_size, 
                                  end_form_id_1, connection_type_id_1, length_1, thread_size_1, thread_pitch_1, nominal_size_1, 
                                  end_form_id_2, connection_type_id_2, length_2, thread_size_2, thread_pitch_2, nominal_size_2, 
                                  end_form_id_3, connection_type_id_3, length_3, thread_size_3, thread_pitch_3, nominal_size_3, 
                                  end_form_id_4, connection_type_id_4, length_4, thread_size_4, thread_pitch_4, nominal_size_4, 
                                  unique_feature, orientation, weight FROM file")
-            closeAllConnections()
-            pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
-            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
-            for(i in 1:nrow(data))
-            {
-                component_id <- as.integer(substring(data[i, "component_id"], 3))
-                Values_List <- c(
-                    "NULL",
-                    component_id,
-                    as.integer(substring(data[i, "component_type_id"], 4)),
-                    ifelse(data[i, "adaptor_angle"] == "NA", "NULL", data[i, "adaptor_angle"]),
-                    ifelse(data[i, "overall_length"] == "NA", "NULL", data[i, "overall_length"]),
-                    ifelse(data[i, "hex_size"] == "NA", "NULL", data[i, "hex_size"]),
-                    ifelse(data[i, "unique_feature"] == "NA", "NULL", transformToBit(data[i, "unique_feature"])),
-                    transformToBit(data[i, "orientation"]),
-                    ifelse(data[i, "weight"] == "NA", "NULL", data[i, "weight"])
-                )
-                private$database$insertIntoTable("ComponentThreaded", Values_List)
-                
-                ## Insert the 4 thread connections in the table 'Component_Connection'.
-                fk_thread <- private$database$getPkValueFromName("ComponentThreaded", "fkComponent", component_id)
-                for(j in 1:4)
-                {
-                    Thread_Values <- c(
-                        fk_thread,
-                        convertSpecialValues(data[i, paste("end_form_id_", j, sep = "")], pk_end_form_other),
-                        convertSpecialValues(data[i, paste("connection_type_id_", j, sep = "")], pk_connection_other),
-                        ifelse(data[i, paste("length_", j, sep = "")] == "NA", "NULL", data[i, paste("length_", j, sep = "")]),
-                        ifelse(data[i, paste("thread_size_", j, sep = "")] == "NA", "NULL", data[i, paste("thread_size_", j, sep = "")]),
-                        ifelse(data[i, paste("thread_pitch_", j, sep = "")] == "NA", "NULL", data[i, paste("thread_pitch_", j, sep = "")]),
-                        ifelse(data[i, paste("nominal_size_", j, sep = "")] == "NA", "NULL", data[i, paste("nominal_size_", j, sep = "")])
-                    )
-                    private$database$insertIntoTable("Component_Connection", Thread_Values)
-                }
-            }
+            ## Transform the data.
+            data_threaded <- data[, c("component_id", "component_type_id", "adaptor_angle", "overall_length", "hex_size", "unique_feature", "orientation", "weight")]
+            data_threaded <- cbind(primary_key = "NULL", data_threaded)
+            data_threaded$component_id <- as.integer(substring(data_threaded$component_id, 3))
+            data_threaded$component_type_id <- as.integer(substring(data_threaded$component_type_id, 4))
+            data_threaded$adaptor_angle <- ifelse(data_threaded$adaptor_angle == "NA", "NULL", data_threaded$adaptor_angle)
+            data_threaded$overall_length <- ifelse(data_threaded$overall_length == "NA", "NULL", data_threaded$overall_length)
+            data_threaded$hex_size <- ifelse(data_threaded$hex_size == "NA", "NULL", data_threaded$hex_size)
+            data_threaded$unique_feature <- ifelse(data_threaded$unique_feature == "Yes", 1, 0)
+            data_threaded$orientation <- ifelse(data_threaded$orientation == "Yes", 1, 0)
+            data_threaded$weight <- ifelse(data_threaded$weight == "NA", "NULL", data_threaded$weight)
+            
+            rows_values <- apply(data_threaded, 1, paste, collapse = ",")
+            values <- paste(rows_values, collapse = "),(")
+            private$database$insertIntoTable("ComponentThreaded", values)
+            
+            private$addThreadedConnectionsData(data, data_threaded)
+            
             cat("DONE\n")
         }
     )

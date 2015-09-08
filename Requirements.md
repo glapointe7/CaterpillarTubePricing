@@ -88,7 +88,7 @@ For the R language we will use tabulation of 4 spaces as indentation:
 * Function parameters: aaaa_bbbb
 * Local variables: aaaa_bbbb
 * Constants: AAAA_BBBB
-* Arrays (any type): Aaaaa_Bbbbb
+* DataSet (data frame): Aaaaa_Bbbbb
 
 Any function or instructions that require braces should have open and closed braces on separate lines like this: 
 ```{r}
