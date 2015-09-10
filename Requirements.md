@@ -15,13 +15,15 @@ In this section, we write the list of languages and softwares that will be used 
 
 #### Languages
 
-* MySQL 5.5.44 to store the data since the entire dataset is small (approximatively 6.8 Mb)
+* MySQL 5.5.44 to store the data since the entire dataset is small enough (approximatively 6.8 Mb)
 * R version 3.2.1 (2015-06-18) to produce the analysis code and graphics
+* LaTeX with TeX Live 2013/Debian
 
-#### Sofwares
+#### Softwares
 
 * MySQL WorkBench version 6.0.8.11354
 * RStudio Version 0.99.465
+* TeXstudio 2.6.6 (hg 4099)
 * Dia to build the relational schema of the database and other schemas if needed
 * [XMind 6](www.xmind.net/download/)
 
@@ -68,47 +70,6 @@ We will use GIT version 1.9.1 as our versioning system.
 Once a functional requirement is done (means it is tested and considered as valid), we will create a tag with a valid name (refer to the Naming Convention section below). Therefore, the `master` branch will be updated with the changes from the new tag. 
 
 We will create a branch named `Development` where we will put reproductible analysis and all documents and codes used for the projects. The `master` branch must contain the documents representing the functional requirements (see last section of this document) and other important documents like the license for example.
-
-## Naming Convention
-For the database:
-
-* Database: Upper camel case (AaaaaBbbbb)
-* Tables: Upper camel case (AaaaaBbbbb)
-* Cross reference tables: Aaaaa_Bbbbb
-* Fields: Lower camel case (aaaaaBbbbb)
-* Primary keys: pkTableName
-* Foreign keys: fkTableName
-
-The date format used will be `yyyy-mm-dd`. This format is used in the dataset (e.g. train\_set.csv, column 'quote\_date').
-
-For the R language we will use tabulation of 4 spaces as indentation:
-
-* Classes: AaaaaBbbbb
-* Functions: aaaaBbbbb
-* Function parameters: aaaa_bbbb
-* Local variables: aaaa_bbbb
-* Constants: AAAA_BBBB
-* DataSet (data frame): Aaaaa_Bbbbb
-
-Any function or instructions that require braces should have open and closed braces on separate lines like this: 
-```{r}
-theFunction <- function(parameters_abc)  
-{  
-    if(parameters_abc = 5)
-    {
-        for(i in 1:20)
-        {
-            ...
-        }
-    }
-}
-```
-
-The tag created with GIT must be in this format: V[x].[y]\_[date of tag creation], where `x` is the major version starting at `0`, `y` is the minor version starting at `1` (can be related with a functional requirement ID) and date of tag creation is in the format Mmmjjaaaa. Here is an example of a valid tag: V0.1\_Aug142015.
-
-Note that if the project is not finished, then the version must be set to `0`. When the project is finished but need optimization, then major version greater than `0` is valid.
-
-The branches used will be `master` and `Development`.
 
 
 ## Database Structure

@@ -14,11 +14,11 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         addThreadedConnectionsData = function(data, data_threaded)
         {
             ## Change the component ids to match with primary key integers. (Removed the prefix "C-")
-            connections <- data[, 6:29]
-            connections <- cbind(component_id = data_threaded$component_id, connections)
+            data_connections <- data[, 6:29]
+            data_connections <- cbind(component_id = data_threaded$component_id, data_connections)
             ids <- c("end_form_id_1", "connection_type_id_1", "end_form_id_2", "connection_type_id_2", 
                      "end_form_id_3", "connection_type_id_3", "end_form_id_4", "connection_type_id_4")
-            connections[, ids] <- apply(connections[, ids], 2, function(x){ifelse(x != "NA", as.integer(substring(x, 3)), "NA")})
+            data_connections[, ids] <- apply(data_connections[, ids], 2, function(x){ifelse(x != "NA", as.integer(substring(x, 3)), "NA")})
             
             values <- ""
             for(i in 1:3)
@@ -30,15 +30,15 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                 thread_pitch <- paste0("thread_pitch_", i)
                 nominal_size <- paste0("nominal_size_", i)
                 
-                components <- connections[, c("component_id", end_form_id, connection_type_id, length, thread_size, thread_pitch, nominal_size)]
-                components[,end_form_id] <- ifelse(components[,end_form_id] == "NA", "NULL", components[,end_form_id])
-                components[,connection_type_id] <- ifelse(components[,connection_type_id] == "NA", "NULL", components[,connection_type_id])
-                components[,length] <- ifelse(components[,length] == "NA", "NULL", components[,length])
-                components[,thread_size] <- ifelse(components[,thread_size] == "NA", "NULL", components[,thread_size])
-                components[,thread_pitch] <- ifelse(components[,thread_pitch] == "NA", "NULL", components[,thread_pitch])
-                components[,nominal_size] <- ifelse(components[,nominal_size] %in% c("NA", 9999), "NULL", components[,nominal_size])
+                data_components <- data_connections[, c("component_id", end_form_id, connection_type_id, length, thread_size, thread_pitch, nominal_size)]
+                data_components[,end_form_id] <- ifelse(data_components[,end_form_id] == "NA", "NULL", data_components[,end_form_id])
+                data_components[,connection_type_id] <- ifelse(data_components[,connection_type_id] == "NA", "NULL", data_components[,connection_type_id])
+                data_components[,length] <- ifelse(data_components[,length] == "NA", "NULL", data_components[,length])
+                data_components[,thread_size] <- ifelse(data_components[,thread_size] == "NA", "NULL", data_components[,thread_size])
+                data_components[,thread_pitch] <- ifelse(data_components[,thread_pitch] == "NA", "NULL", data_components[,thread_pitch])
+                data_components[,nominal_size] <- ifelse(data_components[,nominal_size] %in% c("NA", 9999), "NULL", data_components[,nominal_size])
                 
-                rows_values <- apply(components, 1, function(x){paste(x[x[paste0("end_form_id_", i)] != "NULL"], collapse = ",")})
+                rows_values <- apply(data_components, 1, function(x){paste(x[x[paste0("end_form_id_", i)] != "NULL"], collapse = ",")})
                 values <- paste0(values, paste(rows_values[grepl(",", rows_values)], collapse = "),("), "),(")
             }
             ## This is the only one with a 4th connection. Since there's only one, the collapse won't add "),(" as needed. 
@@ -80,7 +80,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                 }
                 private$database$insertIntoTable(Types_List[[type]], values)
             }
-            closeAllConnections()
+
             cat("DONE\n")
         },
         
@@ -89,9 +89,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         {
             cat("Process insertions into ComponentType table...")
             data <- read.csv.sql("Dataset/components.csv", sql = "SELECT name, component_type_id FROM file")
-            closeAllConnections()
             
-            ## ComponentType must be filled before using this line.
+            ## ComponentType must be filled before getting his ID from the type Other.
             pk_component_type <- private$database$getPkValueFromName("ComponentType", "name", "Other")
             
             ## Transform the data.
@@ -114,8 +113,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             
             data$forming <- ifelse(data$forming == "Yes", 1, 0)
             values <- paste0("NULL,", paste(data$forming, collapse = "),(NULL,"))
-            
             private$database$insertIntoTable("TubeEndForm", values)
+            
             cat("DONE\n")
         },
         
@@ -124,14 +123,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         addTubeAssemblyData = function()
         {
             cat("Process insertions into TubeAssembly table...")
-            data <- read.csv.sql("Dataset/tube.csv", sql = "SELECT tube_assembly_id, material_id, diameter, wall, length, num_bends, bend_radius, end_a_1x, end_a_2x, 
-                                                                   end_x_1x, end_x_2x, end_a, end_x, num_boss, num_bracket, other FROM file")
-            
-            data_specs <- read.csv.sql("Dataset/specs.csv", sql = "SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file")
-            closeAllConnections()
-            
-            ## There are a maximum of 10 specs and a minimum of 0 spec for each tube assembly.
-            specs <- apply(data_specs, 1, function(x){paste(x[x != "NA"], collapse = ",")})
+            data <- read.csv.sql("Dataset/tube.csv", sql = "SELECT tube_assembly_id, material_id, diameter, wall, length, num_bends, bend_radius, 
+                                                                   end_a_1x, end_a_2x, end_x_1x, end_x_2x, end_a, end_x, num_boss, num_bracket, other FROM file")
             
             ## Transform the data.
             data$tube_assembly_id <- as.integer(substring(data$tube_assembly_id, 4))
@@ -147,6 +140,10 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data$end_x_2x <- ifelse(data$end_x_2x == "Y", 1, 0)
             data$end_a <- ifelse(data$end_a == "NONE", "NULL", as.integer(substring(data$end_a, 4)))
             data$end_x <- ifelse(data$end_x == "NONE", "NULL", as.integer(substring(data$end_x, 4)))
+            
+            ## There is a maximum of 10 specs and a minimum of 0 spec for each tube assembly.
+            data_specs <- read.csv.sql("Dataset/specs.csv", sql = "SELECT spec1, spec2, spec3, spec4, spec5, spec6, spec7, spec8, spec9, spec10 FROM file")
+            specs <- apply(data_specs, 1, function(x){paste(x[x != "NA"], collapse = ",")})
             data$specs <- ifelse(specs == "", "NULL", paste0("'", specs, "'"))
             
             rows_values <- apply(data, 1, paste, collapse = ",")
@@ -162,7 +159,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into TubeAssemblyPricing table...")
             data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
                                                                         bracket_pricing, quantity, cost FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -188,11 +184,11 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/bill_of_materials.csv", sql = query)
             
             ## Transform the data.
-            pk_component_other <- private$database$getPkValueFromName("Component", "name", "Other")
             data$tube_assembly_id <- as.integer(substring(data$tube_assembly_id, 4))
             
             ## Change the component ids to match with primary key integers. (Removed the prefix "C-")
             component_id_cols <- c("component_id_1", "component_id_2", "component_id_3", "component_id_4", "component_id_5", "component_id_6", "component_id_7", "component_id_8")
+            pk_component_other <- private$database$getPkValueFromName("Component", "name", "Other")
             data[, component_id_cols] <- apply(data[, component_id_cols], 2, function(x)
             {
                 ifelse(x != "NA", ifelse(x == 9999, pk_component_other, as.integer(substring(x, 3))), "NA")
@@ -203,8 +199,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             values <- ""
             for(i in 1:7)
             {
-                components <- data[, c("tube_assembly_id", paste0("component_id_", i), paste0("quantity_", i))]
-                rows_values <- apply(components, 1, function(x){paste(x[x != "NA"], collapse = ",")})
+                data_components <- data[, c("tube_assembly_id", paste0("component_id_", i), paste0("quantity_", i))]
+                rows_values <- apply(data_components, 1, function(x){paste(x[x != "NA"], collapse = ",")})
                 
                 ## We keep only string with two comas since the dataset contains NA components with a non NA quantity associated.
                 ## This behaviour is absurd so we ensure we won't let that happens.
@@ -214,7 +210,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             ## Since we ensure that there is only one tube assembly with 8 different components.
             ## The collapse won't do anything in that case, so we have to manually enter the values.
             values <- paste0(values, "11524,1981,1")
-            
             private$database$insertIntoTable("TubeAssembly_Component", values)
             
             cat("DONE\n")
@@ -225,7 +220,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         {
             cat("Process insertions into ComponentOther table...")
             data <- read.csv.sql("Dataset/comp_other.csv", sql = "SELECT component_id, part_name, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data. The weights with NA are converted to 0...
             data <- cbind(primary_key = "NULL", data)
@@ -248,9 +242,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                                              end_form_id_1, connection_type_id_1, length_1, thread_size_1, thread_pitch_1, nominal_size_1, 
                                                              end_form_id_2, connection_type_id_2, length_2, thread_size_2, thread_pitch_2, nominal_size_2, 
                                                              hex_size, unique_feature, orientation, weight FROM file")
-            closeAllConnections()
-            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
-            pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -266,6 +257,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data$thread_pitch_1 <- ifelse(data$thread_pitch_1 == "NA", "NULL", data$thread_pitch_1)
             data$nominal_size_1 <- ifelse(data$nominal_size_1 == "NA", "NULL", data$nominal_size_1)
             
+            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
+            pk_end_form_other <- private$database$getPkValueFromName("EndFormType", "name", "Other")
             data$end_form_id_2 <- ifelse(data$end_form_id_2 == 9999, pk_end_form_other, as.integer(substring(data$end_form_id_2, 3)))
             data$connection_type_id_2 <- ifelse(data$connection_type_id_2 == 9999, pk_connection_other, 
                                                 ifelse(data$connection_type_id_2 == "NA", "NULL", as.integer(substring(data$connection_type_id_2, 3))))
@@ -293,14 +286,14 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_boss.csv", sql = "SELECT component_id, component_type_id, type, connection_type_id, outside_shape, base_type, 
                                                                         height_over_tube, bolt_pattern_long, bolt_pattern_wide, groove, base_diameter, 
                                                                         shoulder_diameter, unique_feature, orientation, weight FROM file")
-            closeAllConnections()
-            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
             data$component_id <- as.integer(substring(data$component_id, 3))
             data$component_type_id <- as.integer(substring(data$component_type_id, 4))
             data$type <- ifelse(data$type == "NA", "NULL", paste0("'", data$type, "'"))
+            
+            pk_connection_other <- private$database$getPkValueFromName("ConnectionType", "name", "Other")
             data$connection_type_id <- ifelse(data$connection_type_id == 9999, pk_connection_other, as.integer(substring(data$connection_type_id, 3)))
             data$outside_shape <- ifelse(data$outside_shape == "NA", "NULL", paste0("'", data$outside_shape, "'"))
             data$base_type <- ifelse(data$base_type == "NA", "NULL", paste0("'", data$base_type, "'"))
@@ -327,7 +320,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_elbow.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, 
                                                                          overall_length, thickness, drop_length, elbow_angle, mj_class_code, mj_plug_class_code, 
                                                                          plug_diameter, groove, unique_feature, orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -361,7 +353,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentFloat table...")
             data <- read.csv.sql("Dataset/comp_float.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, thickness, 
                                                                          orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -382,7 +373,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentHfl table...")
             data <- read.csv.sql("Dataset/comp_hfl.csv", sql = "SELECT component_id, component_type_id, hose_diameter, corresponding_shell, coupling_class, 
                                                                        material, plating, orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -407,7 +397,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentNut table...")
             data <- read.csv.sql("Dataset/comp_nut.csv", sql = "SELECT component_id, component_type_id, hex_nut_size, seat_angle, length, thread_size, 
                                                                        thread_pitch, diameter, blind_hole, orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -434,7 +423,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             cat("Process insertions into ComponentSleeve table...")
             data <- read.csv.sql("Dataset/comp_sleeve.csv", sql = "SELECT component_id, component_type_id, connection_type_id, length, intended_nut_thread, 
                                                                           intended_nut_pitch, unique_feature, plating, orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -460,7 +448,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_straight.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, head_diameter,
                                                                             overall_length, thickness, mj_class_code, groove, unique_feature, orientation, 
                                                                             weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -490,7 +477,6 @@ CaterpillarTables <- R6Class("CaterpillarTables",
             data <- read.csv.sql("Dataset/comp_tee.csv", sql = "SELECT component_id, component_type_id, bolt_pattern_long, bolt_pattern_wide, extension_length, 
                                                                        overall_length, thickness, drop_length, mj_class_code, mj_plug_class_code, groove, 
                                                                        unique_feature, orientation, weight FROM file")
-            closeAllConnections()
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
@@ -521,7 +507,8 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                  unique_feature, orientation, weight FROM file")
             
             ## Transform the data.
-            data_threaded <- data[, c("component_id", "component_type_id", "adaptor_angle", "overall_length", "hex_size", "unique_feature", "orientation", "weight")]
+            data_threaded <- data[, c("component_id", "component_type_id", "adaptor_angle", "overall_length", "hex_size", 
+                                      "unique_feature", "orientation", "weight")]
             data_threaded <- cbind(primary_key = "NULL", data_threaded)
             data_threaded$component_id <- as.integer(substring(data_threaded$component_id, 3))
             data_threaded$component_type_id <- as.integer(substring(data_threaded$component_type_id, 4))

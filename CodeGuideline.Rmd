@@ -1,0 +1,43 @@
+# Code Guideline
+
+## Database
+
+* Database: Upper camel case (AaaaaBbbbb)
+* Tables: Upper camel case (AaaaaBbbbb)
+* Cross reference tables: Aaaaa_Bbbbb
+* Fields: Lower camel case (aaaaaBbbbb)
+* Primary keys: pkTableName
+* Foreign keys: fkTableName
+
+The date format used will be `yyyy-mm-dd`. This format is used in the dataset (e.g. train\_set.csv, column 'quote\_date') and will be easy to to manipulate in the code and the database.
+
+## R language
+We will use tabulation of 4 spaces for the indentation of the code.
+
+* Classes: AaaaaBbbbb
+* Functions: aaaaBbbbb
+* Function parameters: aaaa_bbbb
+* Local variables: aaaa_bbbb
+* Constants: AAAA_BBBB
+* DataSet (data frame): data_aaaaa (always begins with `data` or `data\_` if more than one word)
+
+Any function or instructions that require braces should have open and closed braces on separate lines like the following example except for lambda functions (e.g. `apply`). Lambda functions must have braces but can be on one line if the contain is short (one instruction).
+```{r}
+theFunction <- function(parameters_abc)  
+{  
+    if(parameters_abc = 5)
+    {
+        for(i in 1:20)
+        {
+            ...
+        }
+    }
+}
+```
+
+## Versionning
+The tag created with GIT must be in this format: V[x].[y]\_[date of tag creation], where `x` is the major version starting at `0`, `y` is the minor version starting at `1` (can be related with a functional requirement ID) and date of tag creation is in the format Mmmjjaaaa. Here is an example of a valid tag: V0.1\_Aug142015.
+
+Note that if the project is not finished, then the version must be set to `0`. When the project is finished but need optimization, then major version greater than `0` is valid.
+
+The branches used will be `master` if tests passed and `Development` for any development. The code (R and MySQL) MUST NOT contain any error when commiting. 

@@ -5,7 +5,6 @@ library(RMySQL)
 library(R6)
 
 
-## Class CaterpillarDatabase.
 CaterpillarDatabase <- R6Class("CaterpillarDatabase",
     private = list(
         ## Connection handler of the database.
@@ -14,7 +13,7 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
     
     
     public = list(
-        ## Constructor.
+
         initialize = function()
         {
             
@@ -42,6 +41,7 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
         },
         
         ## Insert data into a table 'table', where 'values' is a string of values since we don't need to insert for specific columns.
+        ## MySQL syntax used: INSERT INTO TableName VALUES(...), (...), ..., (...);
         insertIntoTable = function(table, values)
         {
             query <- paste0("INSERT INTO ", table, " VALUES(", values, ");")
