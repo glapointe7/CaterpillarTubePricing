@@ -21,7 +21,7 @@ In this entire dataset, there is no blank cell. Here is the table explaining spe
 | NONE           | Means that there is no such element on a certain tube assembly or component. |
 | 9999           | If a measurable variable as this value, then the value of this variable is unknown or missing. In the case the variable is not measurable and refer to an ID, then `9999` is associated with the name `Other`. |
 
-There are also many prefix identifiant codes used in fields [Table]_id. Here are the list:
+There are also many prefix identifiant codes used in fields [Table]_id. Here is the list:
 
 | Code           | Full name |
 | -------------- | --------- |
@@ -79,13 +79,13 @@ This file contains information on price quotes from our suppliers. Prices can be
 
 
 #### test_set.csv
-This file will be use to test our predictions (models).
+This file will be used to test our prediction algorithms, i.e. estimate the cost for each tube assembly.
 
 
 | Variable           | Description |
 | ------------------ | ----------- |
 | id                 | Auto-increment number starting to 1. |
-| tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
+| tube_assembly_id   | The tube assembly ID (TA-yyyyy) where yyyyy is an integer not contained amoung the tube assemblies in the train set. |
 | supplier           | The supplier who quotes the price of a tube assembly. |
 | quote_date         | Date when the supplier quotes the price on a tube assembly. |
 | annual_usage       | An estimate of how many tube assemblies will be purchased in a given year. |
@@ -108,9 +108,9 @@ Source of images: [https://www.kaggle.com/c/caterpillar-tube-pricing/data](https
 | ------------------ | ----------- |
 | tube_assembly_id   | The tube assembly ID (TA-xxxxx). |
 | material_id        | The material used, represented by his ID, for the tube assembly. |
-| diameter           | Typical diameter of tubes used in this tube assembly. |
-| wall               | Typical wall thickness of tubes used in this tube assembly. |
-| length             | Total length of this tube assembly. |
+| diameter           | Typical diameter (in inches) of tubes used in this tube assembly. |
+| wall               | Typical wall thickness (in inches) of tubes used in this tube assembly. |
+| length             | Total length (in inches) of this tube assembly. |
 | num_bends          | Total number of bends in this tube assembly. |
 | bend_radius        | Typical bend radius for this tube assembly. |
 | end_a_1x           | (Y) If the end straight length is less than 1 times the tube diameter. (N) otherwise |
