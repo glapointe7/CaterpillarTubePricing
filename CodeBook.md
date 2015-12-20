@@ -98,7 +98,7 @@ This file will be used to test our prediction algorithms, i.e. estimate the cost
 #### tube.csv
 This file contains information on tube assemblies, which are the primary focus of the competition. Tube Assemblies are made of multiple parts. The main piece is the tube which has a specific diameter, wall thickness, length, number of bends and bend radius. Either end of the tube (End A or End X) typically has some form of end connection allowing the tube assembly to attach to other features. Special tooling is typically required for short end straight lengths (end_a_1x, end_a_2x refer to if the end length is less than 1 times or 2 times the tube diameter, respectively). Other components can be permanently attached to a tube such as bosses, brackets or other custom features.
 
-Note: there is no tube assembly TA-19491.
+Note: there is no tube assembly TA-19491. Also, if there is no bend, then the bend radius is set to 0.
 
 Source of images: [https://www.kaggle.com/c/caterpillar-tube-pricing/data](https://www.kaggle.com/c/caterpillar-tube-pricing/data)
 <img src="Images/tube1.png" alt="Drawing" style="width: 500px;"/> <br /><br />
@@ -165,7 +165,7 @@ This file contains the list of all of the components used. Component_type_id ref
 #### comp_[type].csv
 EXPLAIN EACH FILE
 
-These files contain the information classified type of components. The main types are: Adapter, Boss, Elbow, Float, Hfl, Nut, Sleeve, Straight, Tee and Threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
+These files contain the information classified type of components. The main types are: adaptor, boss, elbow, float, hfl, nut, sleeve, straight, tee, other and threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
 
 Note that each `component_id` is unique. The list of all components used in files `comp_[type].csv` corresponds exactly to the list of components in the file `components.csv`.
 

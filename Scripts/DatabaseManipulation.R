@@ -45,7 +45,10 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
         insertIntoTable = function(table, values)
         {
             query <- paste0("INSERT INTO ", table, " VALUES(", values, ");")
-            res <- dbSendQuery(private$con, query)
+            tryCatch(
+                res <- dbSendQuery(private$con, query),
+                error = function(err) {print(err); dbDisconnect(private$con)}
+            )
         },
         
         ## Get the primary key value from a field name and a table given as inputs.
