@@ -41,7 +41,7 @@ There are a total of 21 CSV files in this dataset. Here is the list of files wit
 | FileName              | Variables Number | Sample size | Description |
 | --------------------- | ----------------:| -----------:| ----------- |
 | train_set.csv         | 8                | 30213       | Contains information on price quotes from our suppliers. |
-| test_set.csv          | 8                | 30235       | Contains information on quntities. |
+| test_set.csv          | 8                | 30235       | Contains information on quantities. |
 | tube.csv              | 16               | 21198       | Contains information on tube assemblies. |
 | bill_of_materials.csv | 17               | 21198       | Contains the list of components, and their quantities, used on each tube assembly. |
 | specs.csv             | 11               | 21198       | Contains the list of unique specifications for the tube assembly. |
@@ -163,9 +163,7 @@ This file contains the list of all of the components used. Component_type_id ref
 
 
 #### comp_[type].csv
-EXPLAIN EACH FILE
-
-These files contain the information classified type of components. The main types are: adaptor, boss, elbow, float, hfl, nut, sleeve, straight, tee, other and threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
+These files contain the information for each type of components. The main types are: adaptor, boss, elbow, float, hfl, nut, sleeve, straight, tee and threaded. The other components are listed in the file comp_other.csv. These components are not part of the main types.
 
 Note that each `component_id` is unique. The list of all components used in files `comp_[type].csv` corresponds exactly to the list of components in the file `components.csv`.
 

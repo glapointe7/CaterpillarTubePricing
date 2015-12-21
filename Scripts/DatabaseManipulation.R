@@ -63,7 +63,10 @@ CaterpillarDatabase <- R6Class("CaterpillarDatabase",
         ## Execute a SELECT statement in the Caterpillar database.
         selectFromTable = function(query)
         {
-            res <- dbSendQuery(private$con, query)
+            tryCatch(
+                res <- dbSendQuery(private$con, query),
+                error = function(err) {print(err); dbDisconnect(private$con)}
+            )
             result <- fetch(res, n = -1)
         }
     )

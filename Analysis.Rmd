@@ -1,13 +1,11 @@
 ---
 output: pdf_document
 ---
-# General Observations on Train Set
 
-The first objective is to find all features on which the cost depends from the train set. Then, we find which machine learning algorithms will apply depending of these features.
+# 1 Pre-analysis & Questions
+The first objective is to observe what features may influence the cost of tubes. We start our observation with the features given in the training set where we define a variable for each feature.
 
-Let's define the features used in the training set. The description is given in the codebook.
-
-| Feature        | Variable |
+| Variable       | Feature |
 |----------------|---------|
 | $x_1$          | tube_assembly_id |
 | $x_2$          | supplier |
@@ -18,93 +16,153 @@ Let's define the features used in the training set. The description is given in 
 | $x_7$          | quantity |
 | $x_8$          | cost |
 
-Let's denote $h_{\beta}(x)$ our cost heuristic function of a tube assembly given by a supplier where $\beta$ is our learning parameters. Since the output of this analysis is known (the cost a supplier will quote for a given tube assembly), then we will use a supervised algorithm.
 
-Per the codebook, $x_6$ determines on which features the cost depends. We will use 2 classes to base our cost estimation.
+### 1.1  Tube Physical Properties
+As a supplier, we have to think on which tube features the cost will be based. We know that a tube assembly is made with one or more components. Some numerical tube properties may be helpful to check.
 
-1. Bracket pricing ($x_6 = 1$ (Yes)) where the function $C(x)$ depends of $x_7$ amoung other features.
-2. Non-bracket pricing ($x_6 = 0$ (No)) where the function $C(x)$ depends of $x_5$ and $x_7$. 
-
-As a supplier, we have to think on which features (properties) of the tube the cost will be based. We know that a tube assembly is made with one or more components. Some properties may be helpful to check:
-
-* The weight of the tube
-* The quantity of tubes
-* The volume of the tube
-* The material properties used to make the tube which can be used to get the density
+* The weight
+* The quantity
+* The volume
 * The number of bends used. Logically, it is more difficult to bend a tube than to keep it linear, so it should be more expansive.
+* The component types used to assemble the tube.
 
-Other factors than the tube properties may also be helpful to check.
+### 1.2  Supplier Features
 
 * The date when the supplier has quoted the price which is certainly less 20 years ago than today when not adjusted.
-* The supplier may use different mathematical models to quote his price. We can then classify the data by supplier.
-* The tube assembly ID may be used at some points in the prediction. Need to investigate why specifically these tubes are chosen in the train set.
+* The suppliers may use different mathematical models to quote their price.
+* The supplier uses or not a bracket pricing which can influence what features to use in both cases.
+
+### 1.3 Other Observations
+
+* The tube assembly ID may be used at some points in the prediction. We need to investigate why and how these tubes are chosen in the train set.
 * The costs have too many decimals to be a real cost. Maybe a conversion is needed in some way to get the real cost.
 * The supplier may have decided to quote the tubes with very expensive or cheap price. These prices can be considered as anomalies.
 
-From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together with the `merge` function. To avoid to many columns, we will remove some features that we will not want in our analysis.
+### 1.4  Questions to Answer
 
-## Simple Test on Comparing Quantities and Costs
+To archieve our goal of predicting the cost with a good accuracy, we need to answer the following questions.
 
-In this section, we simplify the dataset where we use the bracket pricing with the supplier S-0066. The objective is to find a mathematical model representing the cost in function of the quantity.
+1. What features are used to determine the cost and what features to exclude from the analysis?
+2. Do the costs presented in the training set are the real costs or do they need to be adjusted?
+3. Is there a unique mathematical model describing the cost in function of the quantity for each supplier?
+4. What particular features need to be classified? Why? How?
+5. Are there anomalies to consider in the dataset? Why? 
 
-We start with the 3 first tube assemblies (TA-00002, TA-00004 and TA-00005) which have the bracket pricing and supplier S-0066.
 
-```{r echo = FALSE, message = FALSE, warning = FALSE}
+# 2    Preparing & Cleaning the Dataset
+In this section, we will answer the first question: _What features are used to determine the cost and what features to exclude from the analysis?_ We will also explain why we chose to keep and exclude features and how we will clean the dataset.
+
+From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together. To avoid to many columns, we will remove some features that we do not want in our analysis.
+
+The file `bill_of_materials.csv` gives us the list of components with their respective quantity used to assemble a tube. Thus, to calculate the total weight for each tube, we use the formula $$W_T = \sum_{i = 0}^n W_i * Q_i$$ where $W_T$ is the total weight of the tube $T$, $W = (W_1,\ldots,W_n)$ is the vector of component weights, $Q = (Q_1,\ldots,Q_n)$ the vector of component quantities and $n \leq 8$ the number of possible components used to assemble a tube $T$.
+
+Let the total volume estimation of a tube assembly be denoted by $V_T$. The volume is function of the length, the wall thickness and the diameter of the tube and its formula is $$V_T = \pi L t(d - t)$$, where $t$ is the wall thickness, $d$ the outside diameter and $L$ the developed length of the tube.
+
+We use the Chi-Squared test to check if a feature is independent or dependent of the cost. We reject the hypothesis of independence if the p-value is greater than 0.05.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 source("Scripts/DatabaseManipulation.R")
 
+## Include libraries for plotting graphes and to display some tables.
 library(ggplot2)
+library(xtable)
 library(knitr)
 
 database <- CaterpillarDatabase$new()
 database$connect()
 
+query <- "SELECT TAP.fkTubeAssembly AS tubeAssemblyID, TAC.totalWeight, 
+        	     PI() * TA.length * TA.wallThickness * (TA.diameter - TA.wallThickness) AS volume,
+        	     TA.numberOfBends, COUNT(TAP.quantity) AS cntQty, TAP.cost
+          FROM TubeAssemblyPricing AS TAP
+        	  INNER JOIN TubeAssemblyWeightView AS TAC ON TAC.fkTubeAssembly = TAP.fkTubeAssembly
+        	  INNER JOIN TubeAssembly AS TA ON TA.pkTubeAssembly = TAP.fkTubeAssembly
+          WHERE TAC.totalWeight IS NOT NULL
+          GROUP BY TAP.fkTubeAssembly;"
+
+data <- database$selectFromTable(query)
+print(xtable(head(data, 10), caption = ''), comment = FALSE, type = 'latex')
+
+## Test if the cost depends of the total weight.
+tbl <- table(data$totalWeight, data$cost)
+chisq.test(tbl)
+plot(data$totalWeight, data$cost, col = "red", xlab = "Weight", ylab = "Cost", xlim = c(0, 15), ylim = c(0, 1000))
+```
+
+Following the Chi-Square test done and the plot, the cost is independent of the weight of a tube since the p-value is less than 0.05.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
+## Test if the cost depends of the volume.
+tbl <- table(data$volume, data$cost)
+chisq.test(tbl)
+plot(data$volume, data$cost, col = "red", xlab = "volume", ylab = "Cost", xlim = c(0, 100000), ylim = c(0, 1000))
+```
+
+Following the Chi-Square test done and the plot, the cost is independent of the volume of a tube since the p-value is less than 0.05.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
+## Test if the cost depends of the number Of Bends
+tbl <- table(data$numberOfBends, data$cost)
+chisq.test(tbl)
+```
+
+Following the Chi-Square tests done, the cost is dependent of the number of bends since the p-value is greater than 0.05.
+
+
+# 3 Real Cost vs Adjusted Cost
+In this section, we will answer the question: _Do the costs presented in the training set are the real costs or do they need to be adjusted?_
+
+# 4 Supplier's Model
+In this section, we will answer the question: _Is there a unique mathematical model describing the cost in function of the quantity for each supplier?_ The first objective is to check the existence of a mathematical model representing the cost in function of the quantity. The second objective is to show if the model is applied by a unique supplier. The last objective is to show if each supplier has its own model. If the unicity does not hold, then we have to check if a model is applied by more than one supplier or if a supplier can apply more than one model depending of other features.
+
+We denote $C_{\beta}(Q)$ our cost heuristic function of a tube assembly given by a supplier where $\beta$ is our learning parameters and $Q$ the vector of quantities.
+
+### 4.1 Existence of a Mathematical Model
+We start with the 3 first tube assemblies (TA-00002, TA-00004 and TA-00005) which are quoted by the supplier `S-0066`.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 query <- "SELECT fkTubeAssembly, supplierID, quantity, cost
           FROM TubeAssemblyPricing
           WHERE fkTubeAssembly IN (2, 4, 5)
           ORDER BY fkTubeAssembly, quantity;"
 
 data <- database$selectFromTable(query)
-kable(data, format = "markdown", caption = "Table built from Tube 2 and 4")
+print(xtable(data, caption = "Table built from Tube 2, 4 and 5"), comment = FALSE, type = 'latex')
 
 plot(data$quantity, data$cost, col = "red", xlab = "Quantity", ylab = "Cost", xlim = c(0, 100), ylim = c(0, 22))
 curve((18.9/x) + 3, xlim = c(1, 100), ylim = c(0, 22), add = TRUE, col = "blue")
 curve((23.477796/x) + 4.896424, xlim = c(1, 100), ylim = c(0, 22), add = TRUE, col = "green")
-title("Cost of tubes 2,3,5 in function of the quantity by Supplier S-0066")
-legend('topright', c("Data from Table 1", "y = (18.9/x) + 3", "y = (23.477796/x) + 4.896424"), lty = 1, col = c('red', 'blue', 'green'), bty = 'o', cex = .75)
+title("Cost of tubes 2,3,5 in function of the quantity (Supplier S-0066)")
+legend('topright', c("From the Dataset", "C = (18.9/Q) + 3", "C = (23.477796/Q) + 4.896424"), lty = 1, col = c('red', 'blue', 'green'), bty = 'o', cex = .75)
 ```
 
-From the plot, we see that the curve representing the points is clearly an hyperbola of equation 
-$$h_{\beta}(x_7) = \frac{\beta_0}{x_7} + \beta_1$$
-where $x_7 \geq 1$, $\beta_1$ is the cost at the last level of purchase based on quantity and $\beta_0 = h_{\beta}(1) - \beta_1$. This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube by the supplier `S-0066`.
+From the plot, we see that the curve representing the circles is clearly an hyperbola of equation 
+$$C_{\beta}(Q) = \frac{\beta_0}{Q} + \beta_1$$
+where $Q \geq 1$, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier, and $\beta_0 = C_{\beta}(1) - \beta_1$. This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
 
 We need to find on which features depend $\beta_0$ and $\beta_1$. 
+<!--### Number of Bends Dependency
 
-### Physical Properties of Tubes
+From the table, we can see that for a fixed quantity, the cost varies. This implies that the cost depends also on tube assembly features. By comparing the tube TA-00002 and TA-00004 from the table `TubeAssembly`, we see that the only feature that varies is the number of bends. The tube TA-00002 is made with 8 bends and the tube TA-00004 is made with 9 bends. Thus, we can find the variation of the cost per bend for the supplier S-0066. From the table, we have $21.9727024365 - 21.9059330191 = 0.066769417$ for the minimal quantity (which is 1). Therefore, the equation for the cost of bends is given by $C(B) = 0.066769417B$ where $B$ is the number of bends in a tube.-->
 
-The goal of this section is to get the total weight for each tube assembly and check if the cost depends of the weight. If yes, then we have to modelize this dependency to help our estimation of the cost.
+### 4.2 Unicity of the Model per Supplier
 
-The file `bill_of_materials.csv` gives us the list of components with their respective quantity used to assemble a tube. Thus, to calculate the total weight for each tube, we use the formula $$W_T = \sum_{i = 0}^n W_i * Q_i$$ where $W_T$ is the total weight of the tube $T$, $W = (W_1,\ldots,W_n)$ is the vector of component weights, $Q = (Q_1,\ldots,Q_n)$ the vector of component quantities and $n \leq 8$ the number of possible components used to assemble a tube $T$.
 
-Let the total volume estimation of a tube assembly be denoted by $V_T$. The volume is function of the length, the wall thickness and the diameter of the tube and its formula is $$V_T = \pi L t(d - t)$$, where $t$ is the wall thickness, $d$ the outside diameter and $L$ the developed length of the tube.
+# 5    Classified Features
 
-```{r echo = FALSE, message = FALSE, warning = FALSE}
-query <- "SELECT TAP.fkTubeAssembly AS TubeAssemblyID, TAP.supplierID, TAC.totalWeight, 
-        	     PI() * TA.length * TA.wallThickness * (TA.diameter - TA.wallThickness) AS volume,
-        	     TA.numberOfBends, TAP.quantity, TAP.cost
-          FROM TubeAssemblyPricing AS TAP
-        	  INNER JOIN 
-        	  (
-        		  SELECT fkTubeAssembly, SUM(C.weight * TAC.quantity) AS totalWeight
-        		  FROM Component AS C
-        			  INNER JOIN TubeAssembly_Component AS TAC ON C.pkComponent = TAC.fkComponent
-        		  GROUP BY TAC.fkTubeAssembly
-        	  ) AS TAC ON TAC.fkTubeAssembly = TAP.fkTubeAssembly
-        	  INNER JOIN TubeAssembly AS TA ON TA.pkTubeAssembly = TAP.fkTubeAssembly
-          WHERE TAP.fkTubeAssembly < 15
-          ORDER BY TAP.fkTubeAssembly, TAP.quantity;"
+# 6    Anomalies Detection
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
+query <- "SELECT fkTubeAssembly, supplierID, MIN(quantity) AS minQty, COUNT(quantity) AS purchaseLevel, cost
+          FROM TubeAssemblyPricing
+          GROUP By fkTubeAssembly
+          HAVING purchaseLevel = 8
+          ORDER BY cost;"
 
 data <- database$selectFromTable(query)
-kable(data, format = "markdown", caption = "Table 2")
+kable(head(data, 8), format = "markdown", caption = "Minimum Cost")
+kable(tail(data, 8), format = "markdown", caption = "Maximum Cost")
 
 gc()
 ```
+
