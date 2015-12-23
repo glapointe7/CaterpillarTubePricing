@@ -23,9 +23,6 @@ In this section, we write the list of languages and softwares that will be used 
 
 * MySQL WorkBench version 6.0.8.11354
 * RStudio Version 0.99.465
-* TeXstudio 2.6.6 (hg 4099)
-* Dia to build the relational schema of the database and other schemas if needed
-* [XMind 6](www.xmind.net/download/)
 
 #### Configuration details
 The configuration details for MySQL will be set considering we will create tables once and we will insert a lot of data. Once it will be done, all queries will be selections of data. Since the data integrity is very important, MyISAM engine cannot be used. Therefore, we will use the InnoDB engine. 
@@ -35,26 +32,19 @@ Connection details:
 * Connection method = TCP/IP
 * Hostname = localhost
 * Port = 3306
-* UserName = XXX
-* Password = XXX
 
-R Packages used for this project are:
+R main Packages used for this project are:
 
 * ggplot2
 * dplyr
 * RMySQL
 * R6
 * sqldf
+* xtable
+* knitr
 
 If they are not installed, then use `install.packages("PackageName")` to get the package PackageName installed.
 
-
-#### Type of computer used
-
-* Processor: Intel(R) Core(TM) i7-5500U CPU @ 2.40GHz
-* Cores: 4
-* RAM: 8 GB
-* Company Name: HP (Hewlett-Packard)
 
 #### Operating Systems used
 
@@ -71,9 +61,6 @@ Once a functional requirement is done (means it is tested and considered as vali
 
 We will create a branch named `Development` where we will put reproductible analysis and all documents and codes used for the projects. The `master` branch must contain the documents representing the functional requirements (see last section of this document) and other important documents like the license for example.
 
-
-## Database Structure
-This is the [relational schema of the database](https://github.com/glapointe7/CaterpillarTubePricing/blob/master/Caterpillar.dia).
 
 ## Functional Requirements
 
