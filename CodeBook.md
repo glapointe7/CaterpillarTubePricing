@@ -40,13 +40,13 @@ There are a total of 21 CSV files in this dataset. Here is the list of files wit
 
 | FileName              | Variables Number | Sample size | Description |
 | --------------------- | ----------------:| -----------:| ----------- |
-| train_set.csv         | 8                | 30213       | Contains information on price quotes from our suppliers. |
-| test_set.csv          | 8                | 30235       | Contains information on quantities. |
+| train_set.csv         | 8                | 30213       | Contains information on price quotes from suppliers. |
+| test_set.csv          | 8                | 30235       | Contains information on quantities. This file will be used to estimate the cost knowing the data in the train_set.csv. |
 | tube.csv              | 16               | 21198       | Contains information on tube assemblies. |
 | bill_of_materials.csv | 17               | 21198       | Contains the list of components, and their quantities, used on each tube assembly. |
 | specs.csv             | 11               | 21198       | Contains the list of unique specifications for the tube assembly. |
 | tube_end_form.csv     | 2                | 27          | Contains end types that are physically formed utilizing only the wall of the tube. |
-| components.csv        | 3                | 2048        | Contains the list of all of the components used. |
+| components.csv        | 3                | 2048        | Contains the list of all of the components used with their physical properties. |
 | comp_adaptor.csv      | 20               | 25          | Contains the list of all of the components that are of type Adaptor used. |
 | comp_boss.csv         | 15               | 147         | Contains the list of all of the components that are of type Boss used. |
 | comp_elbow.csv        | 16               | 178         | Contains the list of all of the components that are of type Elbow used. |
