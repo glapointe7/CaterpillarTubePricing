@@ -35,8 +35,8 @@ Connection details:
 * Connection method = TCP/IP
 * Hostname = localhost
 * Port = 3306
-* UserName = root
-* Password = glapointe7
+* UserName = XXX
+* Password = XXX
 
 R Packages used for this project are:
 
