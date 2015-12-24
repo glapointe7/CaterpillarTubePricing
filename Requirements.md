@@ -71,7 +71,7 @@ We will create a branch named `Development` where we will put reproductible anal
 * F-05: Identify variables needed for the analysis and explain why they will be more important for the analysis (independant and dependant variables).
 * F-06: Following the goal provided in the project summary, identify possible methods or models that can be applied to solve the problem and why they are considered.
 * F-07: With the variables identified and list of models found, modelize the problem mathematically and explain every step.
-* F-08: With the dataset obtained after F-03 as input, apply the model to this dataset and show graphically the results with explanations.
+* F-08: With the dataset obtained after F-03 as input, test the model to this dataset and show graphically the results with explanations.
 * F-09: Compare results with the goal to reach and explain why the model succeed or failed. If it fails, keep track and start again from F-04.
 * F-10: If the model succeed, simplify the analysis in terms of business and show how big the difference is.
 * F-11: Conclude by recommanding the successful model and explain the advantages for the company to use it.

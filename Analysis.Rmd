@@ -24,6 +24,7 @@ As a supplier, we have to think on which tube features the cost will be based. W
 * The volume
 * The number of bends used with the bend radius. Logically, it is more difficult to bend a tube than to keep it linear, so it should be more expansive.
 * The component types used to assemble the tube.
+* The number of components to assemble a tube.
 
 ### 1.2  Supplier Features
 
@@ -42,14 +43,13 @@ As a supplier, we have to think on which tube features the cost will be based. W
 To archieve our goal of predicting the cost with a good accuracy, we need to answer the following questions.
 
 1. What features are used to determine the cost and what features to exclude from the analysis?
-2. Do the costs presented in the training set are the real costs or do they need to be adjusted?
-3. Is there a unique mathematical model describing the cost in function of the quantity for each supplier?
-4. What particular features need to be classified? Why? How?
-5. Are there anomalies to consider in the dataset? Why? 
+2. Is there a unique mathematical model describing the cost in function of the quantity for each supplier?
+3. If a mathematical model exists, is it a linear or non-linear model? 
+4. Do we need to classify the data? If yes, What categories, Why and How?
 
 
 # 2    Preparing & Cleaning the Dataset
-In this section, we will answer the first question: _What features are used to determine the cost and what features to exclude from the analysis?_ We will also explain why we chose to keep and exclude features and how we will clean the dataset.
+In this section, we will answer the question: _What features are used to determine the cost and what features to exclude from the analysis?_ We will also explain why we chose to keep and exclude features and how we will clean the dataset.
 
 From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together. To avoid to many columns, we will remove some features that we do not want in our analysis.
 
@@ -108,15 +108,12 @@ chisq.test(tbl)
 Following the Chi-Square tests done, the cost is dependent of the number of bends since the p-value is greater than 0.05.
 
 
-# 3 Real Cost vs Adjusted Cost
-In this section, we will answer the question: _Do the costs presented in the training set are the real costs or do they need to be adjusted?_
-
-# 4 Supplier's Model
-In this section, we will answer the question: _Is there a unique mathematical model describing the cost in function of the quantity for each supplier?_ The first objective is to check the existence of a mathematical model representing the cost in function of the quantity. The second objective is to show if the model is applied by a unique supplier. The last objective is to show if each supplier has its own model. If the unicity does not hold, then we have to check if a model is applied by more than one supplier or if a supplier can apply more than one model depending of other features.
+# 3 Mathematical Models
+In this section, we will answer the question: _Is there a unique mathematical model describing the cost in function of the quantity for each supplier?_ The first objective is to check the existence of a mathematical model representing the cost in function of the quantity. The second objective is to show if the model is applied by a unique supplier. The last objective is to show if each supplier has its own model. If the unicity does not hold, then we have to check if a model is applied by more than one supplier or if a supplier can apply more than one model depending of other features. We will then answer the question: _If a mathematical model exists, is it a linear or non-linear model?_
 
 We denote $C_{\beta}(Q)$ our cost heuristic function of a tube assembly given by a supplier where $\beta$ is our learning parameters and $Q$ the vector of quantities.
 
-### 4.1 Existence of a Mathematical Model
+### 3.1 Existence of a Mathematical Model
 We start with the few tube assemblies which are quoted by the supplier `S-0066`.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
@@ -126,7 +123,7 @@ query <- "SELECT fkTubeAssembly, supplierID, quantity, cost
           ORDER BY fkTubeAssembly, quantity;"
 
 data <- database$selectFromTable(query)
-print(xtable(data, caption = "Table built from Tube 2, 5, 5000, 19365"), comment = FALSE, type = 'latex')
+print(xtable(data, caption = "Table built from tubes 2, 5, 5000, 19365"), comment = FALSE, type = 'latex')
 
 par(mfrow = c(1,3), xpd = TRUE)
 data_min <- data[data$fkTubeAssembly == c(2, 5),]
@@ -159,13 +156,18 @@ curve((244.434490855/x) + 54.3475236892, add = TRUE, col = "chocolate")
 ```
 
 From the graphs, we see that the curves estimating the red points are clearly hyperbolas of equation 
-$$C_{\beta}(Q) = \frac{\beta_0 - \beta_1}{Q} + \beta_1$$
-where $Q \geq 1$ is the quantity, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier (most of the time $Q = 250$), and $\beta_0$ is the cost at the first level of purchase based on quantity and supplier (most of the time $Q = 1$). This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
+$$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q} + \beta_1$$
+where $Q \geq 1$ is the quantity for a tube assembly ID $T$, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier (most of the time $Q = 250$), and $\beta_0$ is the cost at the first level of purchase based on quantity and supplier (most of the time $Q = 1$). This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
 
 If we take a look at the right most graph, we see that our curve doesn't seem to fit the points. However, the maximum quantity is 7 (not 250) for this tube which make the model less accurate assuming the same model is used. This assumption make sense since 
-$$\lim_{Q \to \infty} C_{\beta}(Q) = \beta_1$$
+$$\lim_{Q \to \infty} C_{T}(Q) = \beta_1$$
 which means that we need to find the right $\beta_1$ to match with any quantity. We also have to find the cost of one tube which is $\beta_0$.
 
+For example, if we take the tube `TA-19365`, we have $C_{T}(1) = \beta_0 = 298.7820145446$. We know that $C_{T}(2) = \frac{\beta_0 + \beta_1}{2} = 156.1959237271 \Leftrightarrow \beta_1 = 13.60983291$. Therefore, the model for the tube `TA-19365` is $C_{T}(Q) = \frac{285.172181635}{Q} + 13.60983291$. With $Q = 7$, we obtain $C_{T}(7) = 54.348716001$ which has a square error of $0.000001422$ from the original cost. With our estimated, i.e. $C_{T}(Q) = (244.434490855/Q) + 54.3475236892$, we have $C_{T}(7) = 89.266736668$ which has a square error of $1219.351435073$. Thus, we will gain accuracy by searching for the real value of $\beta_1$.
+
+Since the model is not linear, we can state that applying a linear regression algorithm will not help to estimate the cost.
+
+<!--
 We start by analyzing on what features $\beta_0$ depends.
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 query <- "SELECT TAP.fkTubeAssembly, TAP.supplierID, TA.numberOfBends, TAP.cost
@@ -174,16 +176,18 @@ query <- "SELECT TAP.fkTubeAssembly, TAP.supplierID, TA.numberOfBends, TAP.cost
           WHERE TAP.quantity = 1;"
 
 data <- database$selectFromTable(query)
-print(xtable(head(data, 8), caption = "Table built where quantity is 1"), comment = FALSE, type = 'latex')
+print(xtable(head(data, 8), caption = "First tubes where quantity is 1"), comment = FALSE, type = 'latex')
 
-par(mfrow = c(1,2), xpd = TRUE)
+#par(mfrow = c(1,2), xpd = TRUE)
 plot(data$numberOfBends, data$cost, col = "red", xlab = "#Bends", ylab = "Cost", xlim = range(data$numberOfBends), ylim = range(data$cost))
 points(data$numberOfBends, data$cost, pch = 20, col = "red")
 mtext("Cost of tubes in function of the #bends where tube's quantity is 1", side = 3, line = -1, outer = TRUE)
 ```
+-->
 
 
-### 4.2 Unicity of the Model per Supplier
+
+### 3.2 Unicity of the Model per Supplier
 We verify with few tube assemblies which are quoted by the supplier `S-0054` if the same model used for the supplier `S-0066` applies.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
@@ -205,23 +209,8 @@ curve((4.273242712/x) + 3.8531517947, add = TRUE, col = "black")
 curve((4.092408874/x) + 3.043572609, add = TRUE, col = "chocolate")
 ```
 
-The model used by the supplier `S-0054` seems to be the same as the one used by the supplier `S-0066`, but if we look carefully the curves, we see that greater is the quantity, more accurate is the estimate. This means that the model follows the same behaviour as both as the model used by the supplier `S-0066`. This shows that a model can be used by more than one supplier.
+The model used by the supplier `S-0054` seems to be the same as the one used by the supplier `S-0066`, but if we look carefully the curves, we see that greater is the quantity, more accurate is the estimate. This means that the model follows the same behaviour as both as the model used by the supplier `S-0066`.
 
-# 5    Classified Features
+# 4    Classified Features
 
-# 6    Anomalies Detection
-<!--
-```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
-query <- "SELECT fkTubeAssembly, supplierID, MIN(quantity) AS minQty, COUNT(quantity) AS purchaseLevel, cost
-          FROM TubeAssemblyPricing
-          GROUP By fkTubeAssembly
-          HAVING purchaseLevel = 8
-          ORDER BY cost;"
 
-data <- database$selectFromTable(query)
-kable(head(data, 8), format = "markdown", caption = "Minimum Cost")
-kable(tail(data, 8), format = "markdown", caption = "Maximum Cost")
-
-gc()
-```
--->

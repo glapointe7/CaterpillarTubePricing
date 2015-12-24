@@ -171,9 +171,9 @@ The column `thread_size` in the file `comp_nut.csv` contains codes like `M10` fo
 
 
 #### type_[type].csv
-These files contain the names for each feature (type). The types are: Component Type, Connection and End Form.
+These files contain the names for each feature (type). The types are: Component, Connection and End Form.
 
 | Variable           | Description |
 | ------------------ | ----------- |
-| type\_[type]\_id     | The type ID. Note that the ID `9999` means that this type is other than the ones contain in the list. |
+| type\_[type]\_id   | The type ID. Note that the ID `9999` means that this type is other than the ones contain in the list. |
 | name               | The name of the type. |
