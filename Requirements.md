@@ -23,15 +23,10 @@ In this section, we write the list of languages and softwares that will be used 
 
 * MySQL WorkBench version 6.0.8.11354
 * RStudio Version 0.99.465
+* LibreOffice Calc Version 4.2.8.2
 
 #### Configuration details
 The configuration details for MySQL will be set considering we will create tables once and we will insert a lot of data. Once it will be done, all queries will be selections of data. Since the data integrity is very important, MyISAM engine cannot be used. Therefore, we will use the InnoDB engine. 
-
-Connection details:
-
-* Connection method = TCP/IP
-* Hostname = localhost
-* Port = 3306
 
 R main Packages used for this project are:
 

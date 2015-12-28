@@ -15,6 +15,7 @@ The first objective is to observe what features may influence the cost of tubes.
 | $x_7$          | quantity |
 | $x_8$          | cost |
 
+Since we are predicting the cost value, a continuous variable, we will use a regression algorithm.
 
 ### 1.1  Tube Physical Properties
 As a supplier, we have to think on which tube features the cost will be based. We know that a tube assembly is made with one or more components. Some numerical tube properties may be helpful to check.
@@ -45,10 +46,10 @@ To archieve our goal of predicting the cost with a good accuracy, we need to ans
 1. What features are used to determine the cost and what features to exclude from the analysis?
 2. Is there a unique mathematical model describing the cost in function of the quantity for each supplier?
 3. If a mathematical model exists, is it a linear or non-linear model? 
-4. Do we need to classify the data? If yes, What categories, Why and How?
+4. Are there decisions to take? If yes, what decisions?
 
 
-# 2    Preparing & Cleaning the Dataset
+# 2 Preparing & Cleaning the Dataset
 In this section, we will answer the question: _What features are used to determine the cost and what features to exclude from the analysis?_ We will also explain why we chose to keep and exclude features and how we will clean the dataset.
 
 From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together. To avoid to many columns, we will remove some features that we do not want in our analysis.
@@ -66,6 +67,7 @@ source("Scripts/DatabaseManipulation.R")
 library(ggplot2)
 library(xtable)
 library(knitr)
+library(randomForest)
 
 database <- CaterpillarDatabase$new()
 database$connect()
@@ -159,13 +161,11 @@ From the graphs, we see that the curves estimating the red points are clearly hy
 $$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q} + \beta_1$$
 where $Q \geq 1$ is the quantity for a tube assembly ID $T$, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier (most of the time $Q = 250$), and $\beta_0$ is the cost at the first level of purchase based on quantity and supplier (most of the time $Q = 1$). This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
 
-If we take a look at the right most graph, we see that our curve doesn't seem to fit the points. However, the maximum quantity is 7 (not 250) for this tube which make the model less accurate assuming the same model is used. This assumption make sense since 
+If we take a look at the right most graph, we see that our curve doesn't seem to fit the points. However, the maximum quantity is 7 (not 250) for this tube which make the model less accurate assuming the same model is used. This assumption makes sense since 
 $$\lim_{Q \to \infty} C_{T}(Q) = \beta_1$$
 which means that we need to find the right $\beta_1$ to match with any quantity. We also have to find the cost of one tube which is $\beta_0$.
 
-For example, if we take the tube `TA-19365`, we have $C_{T}(1) = \beta_0 = 298.7820145446$. We know that $C_{T}(2) = \frac{\beta_0 + \beta_1}{2} = 156.1959237271 \Leftrightarrow \beta_1 = 13.60983291$. Therefore, the model for the tube `TA-19365` is $C_{T}(Q) = \frac{285.172181635}{Q} + 13.60983291$. With $Q = 7$, we obtain $C_{T}(7) = 54.348716001$ which has a square error of $0.000001422$ from the original cost. With our estimated, i.e. $C_{T}(Q) = (244.434490855/Q) + 54.3475236892$, we have $C_{T}(7) = 89.266736668$ which has a square error of $1219.351435073$. Thus, we will gain accuracy by searching for the real value of $\beta_1$.
-
-Since the model is not linear, we can state that applying a linear regression algorithm will not help to estimate the cost.
+For example, if we take the tube `TA-19365`, we have $C_{T}(1) = \beta_0 = 298.7820145446$. We know that $C_{T}(2) = \frac{\beta_0 + \beta_1}{2} = 156.1959237271 \Leftrightarrow \beta_1 = 13.60983291$. Therefore, the model for the tube `TA-19365` is $C_{T}(Q) = \frac{285.172181635}{Q} + 13.60983291$. With $Q = 7$, we obtain $C_{T}(7) = 54.348716001$ which has a square error of $0.000001422$ from the original cost. With our estimated, i.e. $C_{T}(Q) = (244.434490855/Q) + 54.3475236892$, we have $C_{T}(7) = 89.266736668$ which has a square error of $1219.351435073$. Thus, if $Q$ is small (say $Q < 25$), the model may underfit.
 
 <!--
 We start by analyzing on what features $\beta_0$ depends.
@@ -184,7 +184,6 @@ points(data$numberOfBends, data$cost, pch = 20, col = "red")
 mtext("Cost of tubes in function of the #bends where tube's quantity is 1", side = 3, line = -1, outer = TRUE)
 ```
 -->
-
 
 
 ### 3.2 Unicity of the Model per Supplier
@@ -209,8 +208,64 @@ curve((4.273242712/x) + 3.8531517947, add = TRUE, col = "black")
 curve((4.092408874/x) + 3.043572609, add = TRUE, col = "chocolate")
 ```
 
-The model used by the supplier `S-0054` seems to be the same as the one used by the supplier `S-0066`, but if we look carefully the curves, we see that greater is the quantity, more accurate is the estimate. This means that the model follows the same behaviour as both as the model used by the supplier `S-0066`.
+The model used by the supplier `S-0054` seems to be the same as the one used by the supplier `S-0066`, but if we look carefully the curves, we see that greater is the quantity, more accurate is the estimate. This means that the model follows the same behaviour as the model used by the supplier `S-0066`.
 
-# 4    Classified Features
+This doesn't seem to be the case for the tube `TA-00384` from the supplier `S-0064`. This supplier provides 6 levels of purchase where the highest quantity is $Q = 45$. We use the same model as before but this time, the model doesn't fit the points.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
+query <- "SELECT fkTubeAssembly, supplierID, minOrderQuantity, anualUsage, quantity, cost
+          FROM TubeAssemblyPricing
+          WHERE fkTubeAssembly = 384;"
+
+data <- database$selectFromTable(query)
+print(xtable(data, caption = "Tube 384"), comment = FALSE, type = 'latex')
+
+plot(data$quantity, data$minOrderQuantity, col = "red", xlab = "Quantity", ylab = "Cost", 
+     xlim = range(data$quantity), ylim = range(data$cost))
+points(data$quantity, data$cost, pch = 20, col = "red")
+mtext("Cost in function of quantity for tube 384 of supplier S-0064", side = 3, line = -1, outer = TRUE)
+curve((0.88469478 / (x-19)) + 4.401217429, add = TRUE, col = "blue")
+gc()
+```
+
+Since the first quantity level is 20, we need to translate the model by subtracting $x$ by $Q_0 - 1 = 19$. This gives the following model $$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q - Q_0 - 1} + \beta_1$$ if $Q > 1$. However, the model still underfits the data because the cost decreases much slower than the model used for our previous tests. Therefore, we can assume that a model can be used to estimate the cost by one or many suppliers but not all.
 
 
+# 4 Decision Tree(s)
+In this section, we will identify conditional paths which will tell us if decision trees will be useful or not. We will answer the question: _Are there decisions to take? If yes, what decisions?_ In the previous section, we have seen that the model can underfit if there are not enough quantity purchase levels and if the quantity is small. Otherwise, we can use the model to estimate the cost given a quantity and a tube assembly. Here are few points that identify some conditions.
+
+* If there is only one quantity purchase level, we cannot estimate the cost. We need al least another feature on which the cost depends.
+* If there are many quantity purchase levels but with $Q_0 > 1$, then we need to translate the model found at section 3.
+* If the quantities are too low, then the model underfits. Thus, we need to add other cost-dependent features.
+* Depending of the supplier, the model may be different. Since we have 57 suppliers in the train set, we can have at most 57 possible models.
+
+Only with those conditions, we can build many decision trees to help us to estimate the cost.
+
+
+# 5 Machine Learning Algorithms and Results
+In this section, we present the machine learning algorithms we will try after the analysis given by the four previous sections. Per the section 4 (Decisions), we have seen that many decision trees can be built. This leaves us two possible algorithms: Random Forest or Boosting Trees for Regression (XGBoost).
+
+### 5.1 Random Forest Algorithm
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+set.seed(415)
+
+## Load the train set and convert features.
+train_data <- read.csv("Dataset/train_set.csv")
+train_data$id <- 1:nrow(train_data)
+train_data$supplier <- as.numeric(substring(train_data$supplier, 3))
+train_data$tube_assembly_id <- as.numeric(substring(train_data$tube_assembly_id, 4))
+
+
+## Load the test set and convert features.
+test_data <- read.csv("Dataset/test_set.csv")
+test_data$supplier <- as.numeric(substring(test_data$supplier, 3))
+test_data$tube_assembly_id <- as.numeric(substring(test_data$tube_assembly_id, 4))
+
+## Model Prediction with Random Forest.
+tube.rf <- randomForest(log(cost + 1) ~., data = train_data, nTree = 50, importance = TRUE, do.trace = 2)
+prediction <- exp(predict(tube.rf, newdata = test_data)) - 1
+predict_rf_data <- cbind(test_data$tube_assembly_id, test_data$supplier, test_data$quantity, prediction)
+colnames(predict_rf_data) <- c('tube_assembly_id', 'Supplier ID', 'quantity', 'cost')
+write.csv(predict_rf_data, "Predict_RF.csv", row.names = FALSE)
+```
