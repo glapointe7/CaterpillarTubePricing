@@ -249,18 +249,25 @@ In this section, we present the machine learning algorithms we will try after th
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 set.seed(415)
+library(lubridate)
+
 
 ## Load the train set and convert features.
 train_data <- read.csv("Dataset/train_set.csv")
 train_data$id <- 1:nrow(train_data)
 train_data$supplier <- as.numeric(substring(train_data$supplier, 3))
 train_data$tube_assembly_id <- as.numeric(substring(train_data$tube_assembly_id, 4))
-
+date <- ymd(as.character(train_data$quote_date))
+days <- yday(date) - 1
+train_data$quote_date <- cumsum(days) 
 
 ## Load the test set and convert features.
 test_data <- read.csv("Dataset/test_set.csv")
 test_data$supplier <- as.numeric(substring(test_data$supplier, 3))
 test_data$tube_assembly_id <- as.numeric(substring(test_data$tube_assembly_id, 4))
+date <- ymd(as.character(test_data$quote_date))
+days <- yday(date) - 1
+test_data$quote_date <- cumsum(days)
 
 ## Model Prediction with Random Forest.
 tube.rf <- randomForest(log(cost + 1) ~., data = train_data, nTree = 50, importance = TRUE, do.trace = 2)
