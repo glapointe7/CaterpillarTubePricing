@@ -31,6 +31,8 @@ The configuration details for MySQL will be set considering we will create table
 R main Packages used for this project are:
 
 * ggplot2
+* lubridate
+* randomForest
 * dplyr
 * RMySQL
 * R6

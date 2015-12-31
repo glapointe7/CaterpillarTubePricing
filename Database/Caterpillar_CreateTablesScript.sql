@@ -178,6 +178,23 @@ CREATE TABLE IF NOT EXISTS `Caterpillar`.`Component_Connection` (
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
+USE `Caterpillar` ;
+
+-- -----------------------------------------------------
+-- Placeholder table for view `Caterpillar`.`TubeAssemblyWeightView`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Caterpillar`.`TubeAssemblyWeightView` (`fkTubeAssembly` INT, `totalWeight` INT);
+
+-- -----------------------------------------------------
+-- View `Caterpillar`.`TubeAssemblyWeightView`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `Caterpillar`.`TubeAssemblyWeightView`;
+USE `Caterpillar`;
+CREATE  OR REPLACE VIEW `TubeAssemblyWeightView` AS
+	Select fkTubeAssembly, SUM(C.weight * TAC.quantity) AS totalWeight
+	From Component AS C
+		INNER JOIN TubeAssembly_Component AS TAC ON C.pkComponent = TAC.fkComponent
+	GROUP BY TAC.fkTubeAssembly;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

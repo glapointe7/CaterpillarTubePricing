@@ -192,8 +192,13 @@ CaterpillarTables <- R6Class("CaterpillarTables",
         addTubeAssemblyPricingData = function()
         {
             cat("Process insertions into TubeAssemblyPricing table...")
-            data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
-                                                                        bracket_pricing, quantity, cost FROM file")
+            train_data <- read.csv.sql("Dataset/train_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
+                                                                              bracket_pricing, quantity, cost FROM file")
+            test_data <- read.csv.sql("Dataset/test_set.csv", sql = "SELECT tube_assembly_id, supplier, quote_date, annual_usage, min_order_quantity, 
+                                                                            bracket_pricing, quantity FROM file")
+            # Merge the test and train sets.
+            test_data$cost <- 0.0
+            data <- merge(test_data, train_data, all = TRUE)
             
             ## Transform the data.
             data <- cbind(primary_key = "NULL", data)
