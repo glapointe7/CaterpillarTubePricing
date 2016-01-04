@@ -24,6 +24,7 @@ In this section, we write the list of languages and softwares that will be used 
 * MySQL WorkBench version 6.0.8.11354
 * RStudio Version 0.99.465
 * LibreOffice Calc Version 4.2.8.2
+* Microsoft Excel 2010
 
 #### Configuration details
 The configuration details for MySQL will be set considering we will create tables once and we will insert a lot of data. Once it will be done, all queries will be selections of data. Since the data integrity is very important, MyISAM engine cannot be used. Therefore, we will use the InnoDB engine. 
@@ -39,6 +40,7 @@ R main Packages used for this project are:
 * sqldf
 * xtable
 * knitr
+* stringr
 
 If they are not installed, then use `install.packages("PackageName")` to get the package PackageName installed.
 
@@ -62,13 +64,11 @@ We will create a branch named `Development` where we will put reproductible anal
 ## Functional Requirements
 
 * F-01: Write a Code Book describing the dataset and its files and variables used from the dataset received as input.
-* F-02: Create the relational scheme of the database from the dataset given as input.
-* F-03: Group and clean data (also apply renaming following a naming convension) from the dataset and create the database.
-* F-04: Insert data from the dataset in the database and keep the script as the output.
-* F-05: Identify variables needed for the analysis and explain why they will be more important for the analysis (independant and dependant variables).
-* F-06: Following the goal provided in the project summary, identify possible methods or models that can be applied to solve the problem and why they are considered.
-* F-07: With the variables identified and list of models found, modelize the problem mathematically and explain every step.
-* F-08: With the dataset obtained after F-03 as input, test the model to this dataset and show graphically the results with explanations.
-* F-09: Compare results with the goal to reach and explain why the model succeed or failed. If it fails, keep track and start again from F-04.
-* F-10: If the model succeed, simplify the analysis in terms of business and show how big the difference is.
-* F-11: Conclude by recommanding the successful model and explain the advantages for the company to use it.
+* F-02: Prepare and clean the dataset by creating a database containing the dataset cleaned. Get the script of the database and tables (and views) creation with the data inserted.
+* F-03: Identify variables needed for the analysis and explain why they will be more important for the analysis (independant and dependant variables).
+* F-04: Following the goal provided in the project summary, identify possible methods or models that can be applied to solve the problem and why they are considered.
+* F-05: Apply the suitable machine learning algorithms on the train and test sets and show every steps done.
+* F-06: Test the algorithm and show all results and improvements.
+* F-07: Compare results with the goal to reach and explain why the model succeed or needs improvements.
+* F-08: Show visually which features were important and improved the model.
+* F-09: Conclude by recommanding the successful model and explain the advantages for the company to use it.
