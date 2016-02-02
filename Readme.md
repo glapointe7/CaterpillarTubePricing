@@ -11,4 +11,4 @@ Currently, Caterpillar relies on a variety of suppliers to manufacture these tub
 ## Project Summary
 This project has the purpose to predict how a supplier will quote a price on a given tube assembly. Knowing this information in advance we can determine the optimal quote which will minimize the expenses of the company. 
 
-The overall goal of this project is to predict quotation price given by a supplier with at least 80% of accuracy. The input given for this project is a dataset containing information about tube assemblies, price quotations and a set of components. 
+The overall goal of this project is to predict quotation price given by a supplier with at least 95% of accuracy. The input given for this project is a dataset containing information about tube assemblies, price quotations and a set of components. 

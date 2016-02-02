@@ -141,6 +141,7 @@ CaterpillarTables <- R6Class("CaterpillarTables",
                                                                             bracket_pricing, quantity FROM file")
             # Merge the test and train sets.
             test_data$cost <- 0.0
+            #train_data$tube_assembly_id <- -nrow(train_data):-1
             data <- merge(test_data, train_data, all = TRUE)
             
             ## Transform the data.

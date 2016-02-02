@@ -2,13 +2,13 @@
 output: pdf_document
 ---
 # 1 Pre-analysis
-As a first step to our analysis, we have to identify possible features that may change the cost of a tube assembly quoted by a supplier. We also ask questions about the dataset where the answers to these questions will help us to choose the right machine learning algorithm(s) to test. Since we are predicting the cost value, a continuous variable, we will use a regression algorithm family.
+As a first step to this analysis, we identify possible features that may change the cost of a tube assembly quoted by a supplier. We also ask questions about the dataset where the answers to these questions will help us to choose the right machine learning algorithms to test. Since we are predicting the cost value, a continuous variable, we will use a regression algorithm family.
 
 ### 1.1  Questions
 
 To archieve our goal of predicting the cost with a good accuracy, we need to answer the following questions.
 
-1. What features are used to determine the cost and what features to exclude from the analysis?
+1. What features are useful to determine the cost and what features to exclude from the analysis?
 2. Is there a unique mathematical model describing the cost in function of the quantity for each supplier?
 3. If there is a mathematical model, is it a linear or non-linear model? 
 4. Are there more than one model to estimate the cost where each model are independent of the others?
@@ -20,24 +20,24 @@ In this section, we will answer the question: _What features are used to determi
 ### 2.1  Tube Physical Properties
 As a supplier, we have to think on which tube features the cost will be based. We know that a tube assembly is made with one or more components. Some numerical tube properties may be helpful to check.
 
-* The weight
-* The quantity
+* The weight of the tube
+* The quantity to purchase
 * The volume (dependent of the diameter, the wall thickness and the length of the tube)
 * The number of bends used with the bend radius. Logically, it is more difficult to bend a tube than to keep it linear, so it should be more expansive.
 * The number of components to assemble a tube. Assembling many components need welds and connectors which should be more expansive.
 * The material used to make the tube. Some type of material can be much expensive than others.
+* The type of component used to assemble the tube. Some types of component may be more complicated to build by their shape.
 
 ### 2.2  Supplier Features
 
 * The date when the supplier has quoted the price which is certainly less 20 years ago than today when not adjusted.
-* The suppliers may use different mathematical models to quote their price.
-* The supplier uses or not a bracket pricing which can influence what features to use in both cases.
+* The suppliers may use different mathematical models to quote their price. Some may set cheaper costs, some may set expensive costs.
 
 
 # 3 Preparing & Cleaning the Dataset
 In this section, we will explain why we chose to keep and exclude features and how we will clean the dataset.
 
-From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together. To avoid to many columns, we will remove some features that we do not want in our analysis.
+From the dataset, we note that there are a total of 2048 components. These components are spread amoung the `comp_[type].csv` files uniquely. This means that we can create a single table `Component` by merging those files together. To avoid to many columns, we will remove some features that we do not want in this analysis.
 
 The training and test sets are merged together where we set the cost to 0 for the test set.
 
@@ -45,11 +45,11 @@ The file `bill_of_materials.csv` gives us the list of components with their resp
 
 Let the total volume estimation of a tube assembly be denoted by $V_T$. The volume is function of the length, the wall thickness and the diameter of the tube and its formula is $$V_T = \pi L t(d - t)$$, where $t$ is the wall thickness, $d$ the outside diameter and $L$ the developed length of the tube.
 
-Every ID used (e.g. tube_assembly_id, material, supplier, etc.) as a string in CSV files are converted to an integer without the leading zeros. The quote date is converted to an integer in the format `YYYYMMDD`.
+Every ID used (e.g. tube_assembly_id, material, supplier, etc.) as a string in CSV files are converted to a positive integer without the leading zeros. The quote date is converted to a positive integer in the format `YYYYMMDD`.
 
-To test and find data efficiently, we create a database `Caterpillar` with tables and views. The script to query this database is given by the file `DatabaseManipulation.R`. The script to insert in batch the data from the CSV files to the database is given by the file `DatabaseInsertions.R`.
+To test and find data efficiently, we create a database `Caterpillar` with tables, views and indexes. The script to query this database is given by the file `DatabaseManipulation.R`. The script to insert in batch the data from the CSV files to the database is given by the file `DatabaseInsertions.R`.
 
-We include librairies for graphs and tables to display. We also connect to the Caterpillar database for the next queries to execute.
+We include librairies for graphs and tables to display in this document. We also connect to the Caterpillar database for the next queries to execute.
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 source("Scripts/DatabaseManipulation.R")
 
@@ -63,25 +63,33 @@ database$connect()
 ```
 
 We prepare the train and test data needed for the analysis.
-```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
-query = "SELECT TAP.fkTubeAssembly, TAP.supplierID, TAP.quoteDate, TAP.anualUsage, TAP.minOrderQuantity,
-        		TAP.bracketPricing, TAP.quantity, TAP.cost, Q.minQty, Q.maxQty,
-        		TA.numberOfBends, TAC.totalWeight, TAC.numberOfComponents, TA.materialID, TA.bendRadius, TA.diameter, TA.wallThickness,
-        		PI() * TA.length * TA.wallThickness * (TA.diameter - TA.wallThickness) AS volume
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+query = "SELECT TAP.fkTubeAssembly, TAP.supplierID, TAP.quoteDate, TAP.anualUsage, TAP.minOrderQuantity, TAP.quantity, TAP.cost,
+                TAC.totalWeight, TAC.maxWeight, TAC.fkComponentType, TAC.numberOfComponents,
+                TA.diameter, TA.wallThickness, TA.length, TA.bendRadius, TA.materialID, TA.specs, TA.numberOfBends,
+                Q.maxQty, Q.avgQty, Q.cntQty
          FROM TubeAssemblyPricing AS TAP
-        	 INNER JOIN TubeAssembly AS TA ON TA.pkTubeAssembly = TAP.fkTubeAssembly
-        	 LEFT JOIN TubeAssemblyWeightView AS TAC ON TAC.fkTubeAssembly = TAP.fkTubeAssembly
-        	 INNER JOIN TubeAssemblyQuantityView AS Q ON TAP.fkTubeAssembly = Q.fkTubeAssembly
+             INNER JOIN TubeAssembly AS TA ON TA.pkTubeAssembly = TAP.fkTubeAssembly
+             LEFT JOIN TubeAssemblyWeightView AS TAC ON TAC.fkTubeAssembly = TAP.fkTubeAssembly
+             INNER JOIN TubeAssemblyQuantityView AS Q ON TAP.fkTubeAssembly = Q.fkTubeAssembly
          LIMIT 60448;"
 data <- database$selectFromTable(query)
 gc()
-
+## TA.numberOfBends, TAC.minWeight, Q.minQty, Q.sumUsage, Q.avgUsage, 
 # Change the date format to YYYYMM and replace the NA to 0.
 library(lubridate)
+library(stringr)
 data$quoteDate <- as.Date(data$quoteDate)
 data$quoteDate <- year(data$quoteDate) * 100 + month(data$quoteDate)
 data$numberOfComponents <- ifelse(is.na(data$numberOfComponents), 0, data$numberOfComponents)
 data$totalWeight <- ifelse(is.na(data$totalWeight), 0, data$totalWeight)
+#data$volume <- pi * data$length * data$wallThickness * (data$diameter - data$wallThickness)
+#data$minWeight <- ifelse(is.na(data$minWeight), 0, data$minWeight)
+data$maxWeight <- ifelse(is.na(data$maxWeight), 0, data$maxWeight)
+#data$avgWeight <- ifelse(is.na(data$avgWeight), 0, data$avgWeight)
+data$fkComponentType <- ifelse(is.na(data$fkComponentType), 0, data$fkComponentType)
+data$specs <- ifelse(is.na(data$specs), 0, str_count(data$specs, ",") + 1)
+#data$pkComponent <- ifelse(is.na(data$pkComponent), 0, data$pkComponent)
 
 # Split the dataset in a train set and a test set.
 test <- data[data$cost == 0,]
@@ -124,7 +132,7 @@ curve((244.434490855/x) + 54.3475236892, add = TRUE, col = "chocolate")
 
 # legend(
 #     'topright', 
-#     c("Dataset Pts", "Tube 2", "Tube 5", "Tube 8459", "Tube 5000"), 
+#     c("Dataset Pts", "TA-00002", "TA-00005", "TA-08459", "TA-05000"), 
 #     lty = 1, 
 #     col = c('red', 'blue', 'green', 'yellow', 'black'), 
 #     bty = 'n', 
@@ -135,7 +143,7 @@ curve((244.434490855/x) + 54.3475236892, add = TRUE, col = "chocolate")
 
 From the graphs, we see that the curves estimating the red points are clearly hyperbolas of equation 
 $$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q} + \beta_1$$
-where $Q \geq 1$ is the quantity for a tube assembly ID $T$, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier (most of the time $Q = 250$), and $\beta_0$ is the cost at the first level of purchase based on quantity and supplier (most of the time $Q = 1$). This equation indicates that if Caterpillar buy more tubes, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
+where $Q \geq 1$ is the quantity for a tube assembly ID $T$, $\beta_1$ is the cost at the last level of purchase based on quantity and supplier (most of the time $Q = 250$), and $\beta_0$ is the cost at the first level of purchase based on quantity and supplier (most of the time $Q = 1$). This equation indicates that if Caterpillar buy more tubes of the same ID, cheaper will be the cost per tube. This proves the existence of a mathematical model representing the cost in function of the quantity.
 
 If we take a look at the right most graph, we see that our curve doesn't seem to fit the points. However, the maximum quantity is 7 (not 250) for this tube which make the model less accurate assuming the same model is used. This assumption makes sense since 
 $$\lim_{Q \to \infty} C_{T}(Q) = \beta_1$$
@@ -145,7 +153,7 @@ For example, if we take the tube `TA-19365`, we have $C_{T}(1) = \beta_0 = 298.7
 
 
 ### 4.2 Unicity of the Model per Supplier
-We verify with few tube assemblies which are quoted by the supplier `S-0054` if the same model used for the supplier `S-0066` applies.
+We verify with few tube assemblies, which are quoted by the supplier `S-0054`, if the same model used for the supplier `S-0066` applies.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 data <- train[train$fkTubeAssembly %in% c(130, 280, 1892, 5013), columns]
@@ -167,7 +175,7 @@ This doesn't seem to be the case for the tube `TA-00384` from the supplier `S-00
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE, results = 'asis'}
 data <- train[train$fkTubeAssembly == 384, columns]
-print(xtable(data, caption = "Tube 384"), comment = FALSE, type = 'latex')
+print(xtable(data, caption = "TA-00384"), comment = FALSE, type = 'latex')
 
 plot(data$quantity, data$minOrderQuantity, col = "red", xlab = "Quantity", ylab = "Cost", 
      xlim = range(data$quantity), ylim = range(data$cost), main = "Cost in function of quantity for tube 384 of supplier S-0064")
@@ -176,7 +184,7 @@ points(data$quantity, data$cost, pch = 20, col = "red")
 curve((0.88469478 / (x-19)) + 4.401217429, add = TRUE, col = "blue")
 ```
 
-Since the first quantity level is $Q_0 = 20$, we need to translate the model by subtracting $x$ by $Q_0 - 1 = 19$. This gives the following model $$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q - Q_0 - 1} + \beta_1$$ for all $Q \geq 1$. However, the model still underfits the data because the cost decreases much slower than the model used for our previous tests. Therefore, we can assume that a model specific parameters can be used to estimate the cost by one or many suppliers but not all. However, the general model is used by suppliers and may need to adjust the parameters to fit the data. 
+Since the first quantity level is $Q_0 = 20$, we need to translate the model by subtracting $x$ by $Q_0 - 1 = 19$. This gives the following model $$C_{T}(Q) = \frac{\beta_0 - \beta_1}{Q - Q_0 - 1} + \beta_1$$ for all $Q \geq 1$. However, the model still underfits the data because the cost decreases much slower than the model used for our previous tests. Therefore, we can assume that a model with specific parameters are used to estimate the cost by one or many suppliers but not all. However, the general model is used by suppliers and may need to adjust the parameters to fit the data. 
 
 
 # 5 Decision Tree(s)
@@ -196,25 +204,52 @@ In this section, we present the machine learning algorithms we will try after th
 ### 6.1 Random Forest Algorithm
 Suppose we want to create a tree for each supplier. This gives us a forest of 68 trees. Each of them may use or not the bracket pricing. The next level can be if they have been bended (at least one bend) or not. The next level can be the material used to make the tube where each of them has a certain probability of usage. We can go deeper, but this gives us a good example to show that a random forest algorithm is a good choice to predict the cost.
 
+
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
+#require(caret)
 require(randomForest)
 set.seed(415)
-rf <- randomForest(log(cost + 1) ~., data = train, nTree = 25, do.trace = 2)
-prediction <- exp(predict(rf, newdata = test)) - 1
-predict_rf_data <- cbind(test$id, prediction)
-colnames(predict_rf_data) <- c('id', 'cost')
-write.csv(predict_rf_data, "Submission.csv", row.names = FALSE)
+
+## Take 80% of the training data and create a partition where the label is the cost.
+# cv.partitions <- createDataPartition(y = train$cost, p = 0.2, list = FALSE)
+# cv.train.partition <- train[cv.partitions, ]
+# 
+# ## Cross-Validation with 5 folds using the Regression as the type of random forest algorithm.
+# cv.fold <- 5
+# cv.train_control <- trainControl(method = "cv", number = cv.fold)
+# cv.model<-train(cv.train.partition$cost ~., data = cv.train.partition, method = "rf", trControl = cv.train_control)
+# print(cv.model)
+# print(cv.model$finalModel)
+
+system.time({
+    train.rf <- randomForest(log(cost + 1) ~., data = train, nTree = 20)
+    print(train.rf)
+    train.perdiction <- exp(predict(train.rf, newdata = test)) - 1
+    col <- cbind(test$id, train.perdiction)
+    colnames(col) <- c('id', 'cost')
+    write.csv(col, "Submission.csv", row.names = FALSE)
+})
+varImpPlot(train.rf)
+print(train.rf$importance)
 ```
 
-Using only all features of the train set to predict the cost with the random forest algorithm gives us a score of 0.412645. Here are a list of actions we have done to improve the prediction.
+Using only all features of the train set to predict the cost with the random forest algorithm using regression gives a score of 0.412645. Here is a list of actions done to improve the prediction.
 
-* We removed the day part of the quote date and kept the date in the integer format `YYYYMM`. The score improved to 0.369528.
-* We added the number of bends for each tube. The score improved to 0.350888.
-* We added the total weight of each tube. The score improved to 0.283084.
-* We added the number of components for each tube. The score improved to 0.282526.
-* We added the material used for each tube. The score improved to 0.273897.
-* We added the volume of each tube. The score improved to 0.261271.
-* We added the maximum and minimum of quantities with the wall thickness and the diameter or each tube. The score improved to 0.252800.
+* Removing the day part of the quote date and keeping the date in the integer format `YYYYMM` improved the score with 82.4% of variances explained.
+* Removing the bracket_pricing field improved the score with 84.56% of variances explained.
+* Adding the total weight improved the score with 90.22% of variances explained.
+* Adding the diameter of the tube improved the score with 91.96% of variances explained.
+* Adding the wall thickness and length of the tube improved the score with 92.75% of variances explained.
+* Adding the maximum and average quantity for each tube improved the score with 93.06% of variances explained.
+* Adding the maximum weight of components for each tube improved the score with 93.17% of variances explained.
+* Adding the component type for each tube improved the score with 93.31% of variances explained.
+* Adding the typical bend radius for each tube improved the score with 93.40% of variances explained.
+* Adding the number of quantities for each tube improved the score with 93.45% of variances explained.
+* Adding the material ID for each tube improved the score with 93.59% of variances explained.
+* Adding the number of specs for each tube improved the score with 93.61% of variances explained.
+* Adding the number of components for each tube improved the score with 93.67% of variances explained.
+* Adding the number of bends for each tube improved the score with 93.72% of variances explained.
+
 
 Some features didn't improve the prediction.
 
@@ -228,40 +263,46 @@ Some features didn't improve the prediction.
 * other
 * num_boss
 * number of quantity levels per tube
+* bracket_pricing
 
 ### 6.2 Gradient Boosted Regression Trees
-Before the learning we will use the cross validation to evaluate our error rate.
+Before the learning we will use the cross validation to evaluate our error rate and to find the minimum number of trees needed to get a better prediction.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
 require(xgboost)
-library(methods)
+require(methods)
 
-### Cross-Validation
 train_labels <- log(train$cost + 1)
+train$cost <- NULL
 train_matrix <- xgb.DMatrix(as.matrix(train), label = train_labels)
 test_matrix <- xgb.DMatrix(as.matrix(test))
-bst.cv <- xgb.cv(data = train_matrix, nfold = 5, nrounds = 10, objective = "reg:linear")
 
+## We use the linear regression, because multiplying the models C(Q) by Q gives a linear model.
+param <- list(objective = "reg:linear", eta = 0.05, max_depth = 7, min_child_weight = 5, subsample = 0.8, scale_pos_weight = 1, colsample_bytree = 0.8)
+### Cross-Validation
+# bst.cv <- xgb.cv(data = train_matrix, nfold = 10, param = param, nrounds = 1569, verbose = 0)
+# plot(bst.cv$train.rmse.mean, type = "l", xlab = "Number of trees", ylab = "Mean of RMSE")
+```
+
+We can see from the graph that the number of trees almost stop varying from 1569 trees.
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
 ### Training.
-# nround <- 1000
-# bst <- xgboost(data = train_matrix, label = train_labels, nrounds = nround, objective = "reg:linear")
-# 
-# model <- xgb.dump(bst, with.stats = T)
-# print(model[1:10])
-# 
-# prediction <- exp(predict(bst, newdata = test_matrix)) - 1
-# predict_xg_data <- cbind(test$id, prediction)
-# colnames(predict_xg_data) <- c('id', 'cost')
-# write.csv(predict_xg_data, "XG_Submission.csv", row.names = FALSE)
-# 
-# # Get the feature real names
-# names <- dimnames(train_matrix)[[2]]
-# 
-# # Compute feature importance matrix
-# importance_matrix <- xgb.importance(names, model = bst)
-# 
-# # Nice graph
-# xgb.plot.importance(importance_matrix[1:10, ])
+bst <- xgboost(data = train_matrix, nrounds = 1569, param = param, verbose = 0)
+model <- xgb.dump(bst, with.stats = T)
+print(model[1:10])
+
+prediction <- exp(predict(bst, test_matrix)) - 1
+predict_xg_data <- cbind(test$id, prediction)
+colnames(predict_xg_data) <- c('id', 'cost')
+write.csv(predict_xg_data, "XG_Submission.csv", row.names = FALSE)
+
+## Get the feature real names.
+names <- dimnames(train_matrix)[[2]]
+
+## Compute feature importance matrix.
+importance_matrix <- xgb.importance(names, model = bst)
+xgb.plot.importance(importance_matrix[1:10, ])
 ```
 
 

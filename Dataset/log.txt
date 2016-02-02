@@ -9,3 +9,7 @@ TA-04114 - 135
 TA-17390 - 40
 TA-18227 - 74
 TA-18229 - 51
+
+bill_of_materials.csv
+TA-14643 C-1622 1	C-1885	2	NA	NA
+
