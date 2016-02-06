@@ -221,16 +221,16 @@ set.seed(415)
 # print(cv.model)
 # print(cv.model$finalModel)
 
-system.time({
-    train.rf <- randomForest(log(cost + 1) ~., data = train, nTree = 20)
-    print(train.rf)
-    train.perdiction <- exp(predict(train.rf, newdata = test)) - 1
-    col <- cbind(test$id, train.perdiction)
-    colnames(col) <- c('id', 'cost')
-    write.csv(col, "Submission.csv", row.names = FALSE)
-})
-varImpPlot(train.rf)
-print(train.rf$importance)
+# system.time({
+#     train.rf <- randomForest(log(cost + 1) ~., data = train, nTree = 20)
+#     print(train.rf)
+#     train.perdiction <- exp(predict(train.rf, newdata = test)) - 1
+#     col <- cbind(test$id, train.perdiction)
+#     colnames(col) <- c('id', 'cost')
+#     write.csv(col, "Submission.csv", row.names = FALSE)
+# })
+# varImpPlot(train.rf)
+# print(train.rf$importance)
 ```
 
 Using only all features of the train set to predict the cost with the random forest algorithm using regression gives a score of 0.412645. Here is a list of actions done to improve the prediction.
@@ -265,7 +265,7 @@ Some features didn't improve the prediction.
 * number of quantity levels per tube
 * bracket_pricing
 
-### 6.2 Gradient Boosted Regression Trees
+### 6.2 Extreme Gradient Boosted Regression Trees
 Before the learning we will use the cross validation to evaluate our error rate and to find the minimum number of trees needed to get a better prediction.
 
 ```{r echo = FALSE, message = FALSE, warning = FALSE}
@@ -273,41 +273,60 @@ require(xgboost)
 require(methods)
 
 train_labels <- log(train$cost + 1)
+test$cost <- NULL
 train$cost <- NULL
 train_matrix <- xgb.DMatrix(as.matrix(train), label = train_labels)
 test_matrix <- xgb.DMatrix(as.matrix(test))
 
 ## We use the linear regression, because multiplying the models C(Q) by Q gives a linear model.
-param <- list(objective = "reg:linear", eta = 0.05, max_depth = 7, min_child_weight = 5, subsample = 0.8, scale_pos_weight = 1, colsample_bytree = 0.8)
+## subsample = 0.9 where XGBoost will collect randomly 90% of the training data to grow trees.
+param <- list(objective = "reg:linear", 
+              eta = 0.05, 
+              max_depth = 7, 
+              min_child_weight = 5, 
+              subsample = 0.9, 
+              scale_pos_weight = 0.8, 
+              colsample_bytree = 0.8)
+
+## Get the feature real names.
+names <- dimnames(train_matrix)[[2]]
+
 ### Cross-Validation
 # bst.cv <- xgb.cv(data = train_matrix, nfold = 10, param = param, nrounds = 1569, verbose = 0)
 # plot(bst.cv$train.rmse.mean, type = "l", xlab = "Number of trees", ylab = "Mean of RMSE")
 ```
 
-We can see from the graph that the number of trees almost stop varying from 1569 trees.
 
-```{r echo = FALSE, message = FALSE, warning = FALSE}
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, results="asis"}
+## Print a model with its statistical information.
+model.print <- function(model, nround)
+{
+    cat(paste0("Prediction with ", nround, " trees...\n\n"))
+    model_dump <- xgb.dump(model, with.stats = TRUE)
+    print(head(model_dump, 10))
+    cat("\n\n")
+}
+
+## Visualize the top 10 most important features.
+model.visualize <- function(model, names)
+{
+    importance_matrix <- xgb.importance(names, model = model)
+    xgb.plot.importance(importance_matrix)
+}
+
 ### Training.
-bst <- xgboost(data = train_matrix, nrounds = 1569, param = param, verbose = 0)
-model <- xgb.dump(bst, with.stats = T)
-print(model[1:10])
+## From the cross-validation, the optimal number of trees is 1569.
+nrounds <- 1569
+model = xgboost(param = param, train_matrix, nrounds = nrounds, verbose = 0)
+prediction <- exp(predict(model, test_matrix)) - 1
+model.print(model, nrounds)
+model.visualize(model, names)
 
-prediction <- exp(predict(bst, test_matrix)) - 1
 predict_xg_data <- cbind(test$id, prediction)
 colnames(predict_xg_data) <- c('id', 'cost')
 write.csv(predict_xg_data, "XG_Submission.csv", row.names = FALSE)
-
-## Get the feature real names.
-names <- dimnames(train_matrix)[[2]]
-
-## Compute feature importance matrix.
-importance_matrix <- xgb.importance(names, model = bst)
-xgb.plot.importance(importance_matrix[1:10, ])
 ```
-
-
-# 7 Results and Visualization
-
 
 # 8 Conclusion
 
