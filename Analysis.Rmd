@@ -284,7 +284,6 @@ system.time({
     train$cost <- NULL
 
     train_matrix <- xgb.DMatrix(as.matrix(train), label = train_labels)
-    test_matrix <- xgb.DMatrix(as.matrix(test))
     
     ## We use the linear regression because multiplying the models C(Q) by Q gives a linear model.
     ## subsample = 0.85 where XGBoost will collect randomly 85% of the training data to grow trees.
@@ -344,6 +343,7 @@ system.time({
                     train_matrix, 
                     nrounds = nrounds, 
                     verbose = 0)
+    test_matrix <- xgb.DMatrix(as.matrix(test))
     prediction <- exp(predict(model, test_matrix)) - 1
     model.print(model, nrounds)
     
